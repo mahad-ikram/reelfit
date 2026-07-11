@@ -1,0 +1,17 @@
+{
+  "appId": "com.purstech.reelfit",
+  "appName": "Reelfit",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 400,
+      "launchAutoHide": true,
+      "backgroundColor": "#0A0A14",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    }
+  }
+}
