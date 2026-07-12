@@ -85,7 +85,7 @@ body{background:var(--eclipse);color:var(--bone);font-family:'Manrope',system-ui
   <button class="cta" id="exportBtn" style="background:linear-gradient(120deg,#4A24C4,#2A1670 80%)">
     <div class="orb"></div>
     <div class="ic">&#9655;</div>
-    <div><div class="t1">Native export test</div><div class="t2">Pick video &rarr; 9:16 letterbox &rarr; Movies/Reelfit</div></div>
+    <div><div class="t1">Blur-pad export</div><div class="t2">Pick video &rarr; 9:16 blurred fill &rarr; Movies/Reelfit</div></div>
     <div class="ch">&#8250;</div>
   </button>
   <div id="expCard" style="display:none;margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px">
@@ -95,7 +95,7 @@ body{background:var(--eclipse);color:var(--bone);font-family:'Manrope',system-ui
 
   <div class="sec">Quick presets</div>
   <div class="chips" id="chips"></div>
-  <div class="foot">PHASE 1 &middot; M1 EXPORT ENGINE &middot; v0.2.1<br><span id="envline"></span></div>
+  <div class="foot">PHASE 1 &middot; M2 BLUR-PAD &middot; v0.3.0<br><span id="envline"></span></div>
 </div>
 
 <script>
@@ -139,7 +139,7 @@ expBtn.addEventListener('click', async function(){
   try{
     if(!listenerSet){ await P.addListener('exportProgress', function(e){ expBar.style.width=Math.max(2,Math.round(e.progress))+'%'; }); listenerSet=true; }
     expStatus.textContent='Pick a video\u2026';
-    var r = await P.pickAndExport({ aspect: '9:16' });
+    var r = await P.pickAndExport({ aspect: '9:16', mode: 'blur' });
     expBar.style.width='100%';
     expStatus.textContent='\u2713 SAVED: '+r.saved+' \u00b7 '+(r.width?r.width+'\u00d7'+r.height+' \u00b7 ':'')+(r.durationMs/1000).toFixed(1)+'s export';
   }catch(err){

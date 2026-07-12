@@ -65,6 +65,7 @@ public class ReelfitExportPlugin extends Plugin {
 
     private void runExport(final PluginCall call, final Uri inputUri) {
         final float aspect = parseAspect(call.getString("aspect", "9:16"));
+        final String mode = call.getString("mode", "blur");
         final File outFile = new File(getContext().getCacheDir(),
                 "reelfit_" + System.currentTimeMillis() + ".mp4");
 
@@ -72,11 +73,16 @@ public class ReelfitExportPlugin extends Plugin {
             @Override
             public void run() {
                 try {
-                    Presentation presentation = Presentation.createForAspectRatio(
-                            aspect, Presentation.LAYOUT_SCALE_TO_FIT);
+                    androidx.media3.common.Effect videoEffect;
+                    if ("letterbox".equals(mode)) {
+                        videoEffect = Presentation.createForAspectRatio(
+                                aspect, Presentation.LAYOUT_SCALE_TO_FIT);
+                    } else {
+                        videoEffect = new BlurPadEffect(aspect);
+                    }
                     Effects effects = new Effects(
                             new ArrayList<AudioProcessor>(),
-                            Collections.<androidx.media3.common.Effect>singletonList(presentation));
+                            Collections.singletonList(videoEffect));
                     EditedMediaItem item = new EditedMediaItem.Builder(MediaItem.fromUri(inputUri))
                             .setEffects(effects)
                             .build();
