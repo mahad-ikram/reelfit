@@ -1,160 +1,18 @@
 <!doctype html>
-<html lang="en">
+<html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Reelfit</title>
 <style>
-@font-face{font-family:'Manrope';src:url('assets/Manrope.ttf');font-weight:200 800}
-@font-face{font-family:'Fraunces';src:url('assets/Fraunces-Italic.ttf');font-style:italic}
-:root{--volt:#6C3AFF;--voltHi:#8B5CFF;--eclipse:#0A0A14;--bone:#F5F2EC;--muted:#8B8798;--card:#12121C;--line:#23232F}
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:var(--eclipse);color:var(--bone);font-family:'Manrope',system-ui,sans-serif;min-height:100vh}
-/* ---- splash ---- */
-#splash{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;background:linear-gradient(180deg,#8864FC 0%,#6A4BD5 12%,#35206E 25%,#0B0620 40%,#0A0A14 45%);transition:opacity .45s ease}
-#splash.hide{opacity:0;pointer-events:none}
-
-#splash .mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;transform:translateY(-4vh)}
-#splash img.tile{width:96px}
-#splash img.wm{width:150px;margin-top:26px}
-#splash .foot{position:absolute;bottom:calc(34px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:10px}
-#splash .foot span{font-size:12px;color:#8f88a6}
-#splash .foot img{width:120px;opacity:.92}
-/* ---- app ---- */
-#app{opacity:0;transition:opacity .4s ease;padding:calc(18px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom));max-width:520px;margin:0 auto}
-#app.show{opacity:1}
-.hdr{display:flex;align-items:center;gap:11px;margin-bottom:18px}
-.hdr img{width:40px}
-.hdr .name{font-weight:800;font-size:23px}
-.hdr .name b{color:var(--voltHi)}
-.hdr .pro{margin-left:auto;font-family:monospace;font-size:12px;font-weight:700;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:7px 13px;color:var(--bone)}
-.tag{font-family:'Fraunces',serif;font-style:italic;font-size:22px;line-height:1.32;margin:6px 0 18px}
-.cta{display:flex;align-items:center;gap:13px;width:100%;border:none;border-radius:20px;padding:20px 17px;background:linear-gradient(120deg,#7C4DFF,#4A24C4 80%);box-shadow:0 14px 34px rgba(108,58,255,.35);color:#fff;text-align:left;position:relative;overflow:hidden;cursor:pointer}
-.cta .orb{position:absolute;top:-40px;right:-30px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.14);filter:blur(28px)}
-.cta .ic{width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:22px;flex:0 0 auto}
-.cta .t1{font-weight:800;font-size:16px}
-.cta .t2{font-size:12px;color:rgba(255,255,255,.78)}
-.cta .ch{margin-left:auto;font-size:20px;color:rgba(255,255,255,.85)}
-.sec{font-weight:700;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:22px 0 10px}
-.chips{display:flex;gap:9px;overflow-x:auto;padding-bottom:4px}
-.chip{flex:0 0 auto;width:90px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 10px}
-.chip .box{height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
-.chip .r{border-radius:4px}
-.chip .n{font-weight:800;font-size:11.5px}
-.chip .ratio{font-family:monospace;font-size:9px;margin-top:1px}
-#result{display:none;margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px}
-#result.show{display:block}
-#result video{width:100%;border-radius:11px;margin-bottom:12px;background:#000}
-#result .row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}
-#result .row:last-child{border:none}
-#result .row b{color:var(--voltHi);font-family:monospace;font-weight:700}
-.ok{display:inline-block;background:rgba(91,208,139,.14);color:#5BD08B;border:1px solid rgba(91,208,139,.3);border-radius:9px;padding:4px 11px;font-family:monospace;font-size:11px;font-weight:700;margin-bottom:11px}
-.foot{margin-top:30px;text-align:center;font-family:monospace;font-size:10.5px;color:var(--muted);line-height:1.8}
+@font-face{font-family:'Manrope';src:url('fonts/Manrope.ttf');font-weight:200 900;font-display:swap;}
+@font-face{font-family:'Fraunces';src:url('fonts/Fraunces-Italic.ttf');font-style:italic;font-weight:300 900;font-display:swap;}
+@font-face{font-family:'JetBrains Mono';src:url('fonts/JetBrainsMono-Regular.ttf');font-weight:400;font-display:swap;}
+@font-face{font-family:'JetBrains Mono';src:url('fonts/JetBrainsMono-Bold.ttf');font-weight:700;font-display:swap;}
+html,body,#root{margin:0;padding:0;height:100%;background:#0A0A14;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;}
+*{box-sizing:border-box;}
+input[type=range]{accent-color:#6C3AFF;}
 </style>
 </head>
-<body>
-<div id="splash">
-  <div class="mid">
-    <img class="tile" src="assets/tile.png" alt="">
-    <img class="wm" src="assets/wordmark.png" alt="Reelfit">
-  </div>
-  <div class="foot"><span>Sponsored by:</span><img src="assets/purstech.png" alt="PursTech"></div>
-</div>
-
-<div id="app">
-  <div class="hdr">
-    <img src="assets/tile.png" alt=""><div class="name">Reel<b>fit</b></div><div class="pro">&#9813; Pro</div>
-  </div>
-  <div class="tag">Make any video fit<br>any platform.</div>
-  <button class="cta" id="importBtn">
-    <div class="orb"></div>
-    <div class="ic">&#8679;</div>
-    <div><div class="t1">Import video</div><div class="t2">From gallery &mdash; proves media access</div></div>
-    <div class="ch">&#8250;</div>
-  </button>
-  <input type="file" id="filePick" accept="video/*" style="display:none">
-  <div id="result">
-    <span class="ok">&#10003; WEBVIEW MEDIA ACCESS OK</span>
-    <video id="vprev" controls muted playsinline></video>
-    <div class="row"><span>File</span><b id="rName">—</b></div>
-    <div class="row"><span>Size</span><b id="rSize">—</b></div>
-    <div class="row"><span>Duration</span><b id="rDur">—</b></div>
-    <div class="row"><span>Resolution</span><b id="rRes">—</b></div>
-  </div>
-  <div class="sec">Phase 1 &middot; Export engine</div>
-  <button class="cta" id="exportBtn" style="background:linear-gradient(120deg,#4A24C4,#2A1670 80%)">
-    <div class="orb"></div>
-    <div class="ic">&#9655;</div>
-    <div><div class="t1">Blur-pad export</div><div class="t2">Pick video &rarr; 9:16 blurred fill &rarr; Movies/Reelfit</div></div>
-    <div class="ch">&#8250;</div>
-  </button>
-  <div style="margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px 15px 12px">
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-      <span style="font-weight:700;font-size:13px;color:var(--bone)">Blur strength</span>
-      <span id="blurVal" style="font-family:monospace;font-size:12px;color:var(--voltHi)">55</span>
-    </div>
-    <input type="range" id="blurSlider" min="0" max="100" value="55" style="width:100%;accent-color:#6C3AFF">
-  </div>
-  <div id="expCard" style="display:none;margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px">
-    <div style="height:10px;border-radius:5px;background:#23232F;overflow:hidden;margin-bottom:11px"><div id="expBar" style="width:0%;height:100%;background:#6C3AFF;transition:width .3s"></div></div>
-    <div id="expStatus" style="font-family:monospace;font-size:12px;color:var(--muted)">Waiting&hellip;</div>
-  </div>
-
-  <div class="sec">Quick presets</div>
-  <div class="chips" id="chips"></div>
-  <div class="foot">PHASE 1 &middot; M2.1 BLUR TUNE &middot; v0.3.1<br><span id="envline"></span></div>
-</div>
-
-<script>
-setTimeout(function(){
-  document.getElementById('splash').classList.add('hide');
-  document.getElementById('app').classList.add('show');
-}, 1900);
-
-var P=[["Reels","9:16","#E1306C",22,38],["TikTok","9:16","#25F4EE",22,38],["YouTube","16:9","#FF4444",38,24],["IG Post","4:5","#C13584",30,37],["Square","1:1","#8B5CFF",32,32]];
-var host=document.getElementById('chips');
-P.forEach(function(p){
-  var d=document.createElement('div');d.className='chip';d.style.borderColor=p[2]+'44';
-  d.innerHTML='<div class="box" style="background:linear-gradient(135deg,'+p[2]+'18,#171724);border:1px solid '+p[2]+'33"><div class="r" style="width:'+p[3]+'px;height:'+p[4]+'px;border:2.5px solid '+p[2]+'"></div></div><div class="n">'+p[0]+'</div><div class="ratio" style="color:'+p[2]+'">'+p[1]+'</div>';
-  host.appendChild(d);
-});
-
-document.getElementById('importBtn').addEventListener('click',function(){document.getElementById('filePick').click()});
-document.getElementById('filePick').addEventListener('change',function(e){
-  var f=e.target.files[0]; if(!f) return;
-  var v=document.getElementById('vprev'); var url=URL.createObjectURL(f);
-  v.src=url;
-  v.onloadedmetadata=function(){
-    document.getElementById('rName').textContent=f.name.length>26?f.name.slice(0,24)+'…':f.name;
-    document.getElementById('rSize').textContent=(f.size/1048576).toFixed(1)+' MB';
-    document.getElementById('rDur').textContent=v.duration.toFixed(1)+' s';
-    document.getElementById('rRes').textContent=v.videoWidth+'×'+v.videoHeight;
-    document.getElementById('result').classList.add('show');
-  };
-});
-document.getElementById('envline').textContent=(navigator.userAgent.match(/Android [\d.]+/)||['Web preview'])[0]+' · '+screen.width+'×'+screen.height;
-
-var expBtn=document.getElementById('exportBtn');
-var expCard=document.getElementById('expCard');
-var expBar=document.getElementById('expBar');
-var expStatus=document.getElementById('expStatus');
-var listenerSet=false;
-expBtn.addEventListener('click', async function(){
-  expCard.style.display='block'; expBar.style.width='0%';
-  var P = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ReelfitExport;
-  if(!P){ expStatus.textContent='Native plugin unavailable (web preview - works in the APK)'; return; }
-  try{
-    if(!listenerSet){ await P.addListener('exportProgress', function(e){ expBar.style.width=Math.max(2,Math.round(e.progress))+'%'; }); listenerSet=true; }
-    expStatus.textContent='Pick a video\u2026';
-    var r = await P.pickAndExport({ aspect: '9:16', mode: 'blur', blur: parseInt(blurSlider.value,10) });
-    expBar.style.width='100%';
-    expStatus.textContent='\u2713 SAVED: '+r.saved+' \u00b7 '+(r.width?r.width+'\u00d7'+r.height+' \u00b7 ':'')+(r.durationMs/1000).toFixed(1)+'s export';
-  }catch(err){
-    expStatus.textContent='\u2717 '+(err && err.message ? err.message : err);
-  }
-});
-var blurSlider=document.getElementById('blurSlider');
-blurSlider.addEventListener('input',function(){document.getElementById('blurVal').textContent=blurSlider.value;});
-</script>
-</body>
+<body><div id="root"></div><script src="app.js"></script></body>
 </html>
