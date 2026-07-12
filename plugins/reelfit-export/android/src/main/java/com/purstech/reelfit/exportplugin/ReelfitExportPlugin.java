@@ -95,8 +95,6 @@ public class ReelfitExportPlugin extends Plugin {
                                     JSObject ret = new JSObject();
                                     ret.put("saved", saved);
                                     ret.put("durationMs", System.currentTimeMillis() - exportStartMs);
-                                    if (exportResult.width > 0) ret.put("width", exportResult.width);
-                                    if (exportResult.height > 0) ret.put("height", exportResult.height);
                                     call.resolve(ret);
                                 }
 
