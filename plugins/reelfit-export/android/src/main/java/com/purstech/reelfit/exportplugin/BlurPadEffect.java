@@ -21,15 +21,18 @@ import androidx.media3.effect.GlShaderProgram;
 public final class BlurPadEffect implements GlEffect {
 
     private final float targetAspect; // width / height, e.g. 9/16 = 0.5625
+    private final float blurRadius;   // in source UV, ~0.012 (soft) to 0.067 (heavy)
 
-    public BlurPadEffect(float targetAspect) {
+    public BlurPadEffect(float targetAspect, int blurStrength) {
         this.targetAspect = targetAspect;
+        int clamped = Math.max(0, Math.min(100, blurStrength));
+        this.blurRadius = 0.012f + (clamped / 100f) * 0.055f;
     }
 
     @Override
     public GlShaderProgram toGlShaderProgram(Context context, boolean useHdr)
             throws VideoFrameProcessingException {
-        return new BlurPadShaderProgram(useHdr, targetAspect);
+        return new BlurPadShaderProgram(useHdr, targetAspect, blurRadius);
     }
 
     private static final class BlurPadShaderProgram extends BaseGlShaderProgram {
@@ -51,20 +54,15 @@ public final class BlurPadEffect implements GlEffect {
               + "uniform float uBlurR;\n"    // blur radius in source UV
               + "varying vec2 vTexCoords;\n"
               + "vec4 blurBg(vec2 p) {\n"
-              + "  vec4 acc = texture2D(uTexSampler, p) * 0.148;\n"
-              + "  float r1 = uBlurR; float r2 = uBlurR * 2.15;\n"
-              + "  acc += texture2D(uTexSampler, p + vec2( r1, 0.0)) * 0.071;\n"
-              + "  acc += texture2D(uTexSampler, p + vec2(-r1, 0.0)) * 0.071;\n"
-              + "  acc += texture2D(uTexSampler, p + vec2(0.0,  r1)) * 0.071;\n"
-              + "  acc += texture2D(uTexSampler, p + vec2(0.0, -r1)) * 0.071;\n"
-              + "  acc += texture2D(uTexSampler, p + vec2( r1,  r1) * 0.707) * 0.071;\n"
-              + "  acc += texture2D(uTexSampler, p + vec2(-r1,  r1) * 0.707) * 0.071;\n"
-              + "  acc += texture2D(uTexSampler, p + vec2( r1, -r1) * 0.707) * 0.071;\n"
-              + "  acc += texture2D(uTexSampler, p + vec2(-r1, -r1) * 0.707) * 0.071;\n"
-              + "  acc += texture2D(uTexSampler, p + vec2( r2, 0.0)) * 0.066;\n"
-              + "  acc += texture2D(uTexSampler, p + vec2(-r2, 0.0)) * 0.066;\n"
-              + "  acc += texture2D(uTexSampler, p + vec2(0.0,  r2)) * 0.066;\n"
-              + "  acc += texture2D(uTexSampler, p + vec2(0.0, -r2)) * 0.066;\n"
+              + "  vec4 acc = texture2D(uTexSampler, p) * 0.10;\n"
+              + "  float r1 = uBlurR; float r2 = uBlurR * 2.1; float r3 = uBlurR * 3.4;\n"
+              + "  for (int i = 0; i < 8; i++) {\n"
+              + "    float a = 0.7853982 * float(i);\n"
+              + "    vec2 d = vec2(cos(a), sin(a));\n"
+              + "    acc += texture2D(uTexSampler, p + d * r1) * 0.055;\n"
+              + "    acc += texture2D(uTexSampler, p + d * r2) * 0.036;\n"
+              + "    acc += texture2D(uTexSampler, p + d * r3) * 0.0215;\n"
+              + "  }\n"
               + "  return acc;\n"
               + "}\n"
               + "void main() {\n"
@@ -80,15 +78,17 @@ public final class BlurPadEffect implements GlEffect {
               + "}\n";
 
         private final float targetAspect;
+        private final float blurRadius;
         private GlProgram glProgram;
         private float[] bgScale = new float[] {1f, 1f};
         private float[] fgOrigin = new float[] {0f, 0f};
         private float[] fgSize = new float[] {1f, 1f};
 
-        BlurPadShaderProgram(boolean useHdr, float targetAspect)
+        BlurPadShaderProgram(boolean useHdr, float targetAspect, float blurRadius)
                 throws VideoFrameProcessingException {
             super(useHdr, /* texturePoolCapacity= */ 1);
             this.targetAspect = targetAspect;
+            this.blurRadius = blurRadius;
             try {
                 glProgram = new GlProgram(VERTEX_SHADER, FRAGMENT_SHADER);
                 glProgram.setBufferAttribute(
@@ -151,7 +151,7 @@ public final class BlurPadEffect implements GlEffect {
                 glProgram.setFloatsUniform("uBgScale", bgScale);
                 glProgram.setFloatsUniform("uFgOrigin", fgOrigin);
                 glProgram.setFloatsUniform("uFgSize", fgSize);
-                glProgram.setFloatUniform("uBlurR", 0.028f);
+                glProgram.setFloatUniform("uBlurR", blurRadius);
                 glProgram.bindAttributesAndUniforms();
                 GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, /* first= */ 0, /* count= */ 4);
                 GlUtil.checkGlError();

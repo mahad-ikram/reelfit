@@ -66,6 +66,7 @@ public class ReelfitExportPlugin extends Plugin {
     private void runExport(final PluginCall call, final Uri inputUri) {
         final float aspect = parseAspect(call.getString("aspect", "9:16"));
         final String mode = call.getString("mode", "blur");
+        final int blurStrength = call.getInt("blur", 55);
         final File outFile = new File(getContext().getCacheDir(),
                 "reelfit_" + System.currentTimeMillis() + ".mp4");
 
@@ -78,7 +79,7 @@ public class ReelfitExportPlugin extends Plugin {
                         videoEffect = Presentation.createForAspectRatio(
                                 aspect, Presentation.LAYOUT_SCALE_TO_FIT);
                     } else {
-                        videoEffect = new BlurPadEffect(aspect);
+                        videoEffect = new BlurPadEffect(aspect, blurStrength);
                     }
                     Effects effects = new Effects(
                             new ArrayList<AudioProcessor>(),
