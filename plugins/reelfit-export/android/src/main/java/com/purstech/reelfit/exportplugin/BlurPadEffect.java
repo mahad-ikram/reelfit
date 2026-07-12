@@ -22,17 +22,19 @@ public final class BlurPadEffect implements GlEffect {
 
     private final float targetAspect; // width / height, e.g. 9/16 = 0.5625
     private final float blurRadius;   // in source UV, ~0.012 (soft) to 0.067 (heavy)
+    private final float[] bgRgb;      // null = blurred fill; non-null = solid color pads
 
-    public BlurPadEffect(float targetAspect, int blurStrength) {
+    public BlurPadEffect(float targetAspect, int blurStrength, float[] bgRgb) {
         this.targetAspect = targetAspect;
         int clamped = Math.max(0, Math.min(100, blurStrength));
         this.blurRadius = 0.012f + (clamped / 100f) * 0.055f;
+        this.bgRgb = bgRgb;
     }
 
     @Override
     public GlShaderProgram toGlShaderProgram(Context context, boolean useHdr)
             throws VideoFrameProcessingException {
-        return new BlurPadShaderProgram(useHdr, targetAspect, blurRadius);
+        return new BlurPadShaderProgram(useHdr, targetAspect, blurRadius, bgRgb);
     }
 
     private static final class BlurPadShaderProgram extends BaseGlShaderProgram {
@@ -52,6 +54,8 @@ public final class BlurPadEffect implements GlEffect {
               + "uniform vec2 uFgOrigin;\n"  // fg rect origin in output UV
               + "uniform vec2 uFgSize;\n"    // fg rect size in output UV
               + "uniform float uBlurR;\n"    // blur radius in source UV
+              + "uniform float uBgMode;\n"   // 0 = blurred fill, 1 = solid color
+              + "uniform vec3 uBgColor;\n"
               + "varying vec2 vTexCoords;\n"
               + "vec4 blurBg(vec2 p) {\n"
               + "  vec4 acc = texture2D(uTexSampler, p) * 0.10;\n"
@@ -70,6 +74,8 @@ public final class BlurPadEffect implements GlEffect {
               + "  vec2 f = (uv - uFgOrigin) / uFgSize;\n"
               + "  if (f.x >= 0.0 && f.x <= 1.0 && f.y >= 0.0 && f.y <= 1.0) {\n"
               + "    gl_FragColor = texture2D(uTexSampler, f);\n"
+              + "  } else if (uBgMode > 0.5) {\n"
+              + "    gl_FragColor = vec4(uBgColor, 1.0);\n"
               + "  } else {\n"
               + "    vec2 bgUV = (uv - 0.5) * uBgScale + 0.5;\n"
               + "    vec4 bg = blurBg(bgUV);\n"
@@ -79,16 +85,20 @@ public final class BlurPadEffect implements GlEffect {
 
         private final float targetAspect;
         private final float blurRadius;
+        private final float[] bgRgb;
+        private final float bgMode;
         private GlProgram glProgram;
         private float[] bgScale = new float[] {1f, 1f};
         private float[] fgOrigin = new float[] {0f, 0f};
         private float[] fgSize = new float[] {1f, 1f};
 
-        BlurPadShaderProgram(boolean useHdr, float targetAspect, float blurRadius)
+        BlurPadShaderProgram(boolean useHdr, float targetAspect, float blurRadius, float[] bgRgb)
                 throws VideoFrameProcessingException {
             super(useHdr, /* texturePoolCapacity= */ 1);
             this.targetAspect = targetAspect;
             this.blurRadius = blurRadius;
+            this.bgRgb = bgRgb != null ? bgRgb : new float[] {0f, 0f, 0f};
+            this.bgMode = bgRgb != null ? 1f : 0f;
             try {
                 glProgram = new GlProgram(VERTEX_SHADER, FRAGMENT_SHADER);
                 glProgram.setBufferAttribute(
@@ -152,6 +162,8 @@ public final class BlurPadEffect implements GlEffect {
                 glProgram.setFloatsUniform("uFgOrigin", fgOrigin);
                 glProgram.setFloatsUniform("uFgSize", fgSize);
                 glProgram.setFloatUniform("uBlurR", blurRadius);
+                glProgram.setFloatUniform("uBgMode", bgMode);
+                glProgram.setFloatsUniform("uBgColor", bgRgb);
                 glProgram.bindAttributesAndUniforms();
                 GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, /* first= */ 0, /* count= */ 4);
                 GlUtil.checkGlError();
