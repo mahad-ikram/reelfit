@@ -1,15 +1,16 @@
 {
   "name": "reelfit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Reelfit — fit any video to any platform. A PursTech app.",
+  "description": "Reelfit \u2014 fit any video to any platform. A PursTech app.",
   "scripts": {
     "sync": "cap sync android"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",
     "@capacitor/core": "^7.0.0",
-    "@capacitor/splash-screen": "^7.0.0"
+    "@capacitor/splash-screen": "^7.0.0",
+    "reelfit-export": "file:plugins/reelfit-export"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.0.0",

@@ -81,9 +81,21 @@ body{background:var(--eclipse);color:var(--bone);font-family:'Manrope',system-ui
     <div class="row"><span>Duration</span><b id="rDur">—</b></div>
     <div class="row"><span>Resolution</span><b id="rRes">—</b></div>
   </div>
+  <div class="sec">Phase 1 &middot; Export engine</div>
+  <button class="cta" id="exportBtn" style="background:linear-gradient(120deg,#4A24C4,#2A1670 80%)">
+    <div class="orb"></div>
+    <div class="ic">&#9655;</div>
+    <div><div class="t1">Native export test</div><div class="t2">Pick video &rarr; 9:16 letterbox &rarr; Movies/Reelfit</div></div>
+    <div class="ch">&#8250;</div>
+  </button>
+  <div id="expCard" style="display:none;margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px">
+    <div style="height:10px;border-radius:5px;background:#23232F;overflow:hidden;margin-bottom:11px"><div id="expBar" style="width:0%;height:100%;background:#6C3AFF;transition:width .3s"></div></div>
+    <div id="expStatus" style="font-family:monospace;font-size:12px;color:var(--muted)">Waiting&hellip;</div>
+  </div>
+
   <div class="sec">Quick presets</div>
   <div class="chips" id="chips"></div>
-  <div class="foot">PHASE 0 SPIKE &#10003; &middot; v0.1.0 (1)<br><span id="envline"></span></div>
+  <div class="foot">PHASE 1 &middot; M1 EXPORT ENGINE &middot; v0.2.0<br><span id="envline"></span></div>
 </div>
 
 <script>
@@ -114,6 +126,26 @@ document.getElementById('filePick').addEventListener('change',function(e){
   };
 });
 document.getElementById('envline').textContent=(navigator.userAgent.match(/Android [\d.]+/)||['Web preview'])[0]+' · '+screen.width+'×'+screen.height;
+
+var expBtn=document.getElementById('exportBtn');
+var expCard=document.getElementById('expCard');
+var expBar=document.getElementById('expBar');
+var expStatus=document.getElementById('expStatus');
+var listenerSet=false;
+expBtn.addEventListener('click', async function(){
+  expCard.style.display='block'; expBar.style.width='0%';
+  var P = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ReelfitExport;
+  if(!P){ expStatus.textContent='Native plugin unavailable (web preview - works in the APK)'; return; }
+  try{
+    if(!listenerSet){ await P.addListener('exportProgress', function(e){ expBar.style.width=Math.max(2,Math.round(e.progress))+'%'; }); listenerSet=true; }
+    expStatus.textContent='Pick a video\u2026';
+    var r = await P.pickAndExport({ aspect: '9:16' });
+    expBar.style.width='100%';
+    expStatus.textContent='\u2713 SAVED: '+r.saved+' \u00b7 '+(r.width?r.width+'\u00d7'+r.height+' \u00b7 ':'')+(r.durationMs/1000).toFixed(1)+'s export';
+  }catch(err){
+    expStatus.textContent='\u2717 '+(err && err.message ? err.message : err);
+  }
+});
 </script>
 </body>
 </html>

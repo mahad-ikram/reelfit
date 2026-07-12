@@ -1,0 +1,14 @@
+{
+  "name": "reelfit-export",
+  "version": "0.1.0",
+  "description": "Reelfit native export engine - Media3 Transformer",
+  "main": "index.js",
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=7.0.0"
+  }
+}
