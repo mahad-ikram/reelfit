@@ -1,6 +1,6 @@
 {
   "name": "reelfit",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "private": true,
   "description": "Reelfit \u2014 fit any video to any platform. A PursTech app.",
   "scripts": {

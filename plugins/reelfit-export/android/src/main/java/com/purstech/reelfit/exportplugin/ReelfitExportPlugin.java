@@ -47,6 +47,7 @@ public class ReelfitExportPlugin extends Plugin {
     private Transformer activeTransformer;
     private Handler progressHandler;
     private long exportStartMs;
+    private Uri lastSavedUri;
 
     @PluginMethod
     public void pickAndExport(PluginCall call) {
@@ -71,11 +72,11 @@ public class ReelfitExportPlugin extends Plugin {
         if ("letterbox".equals(mode)) {
             geo = Presentation.createForAspectRatio(aspect, Presentation.LAYOUT_SCALE_TO_FIT);
         } else {
-            geo = new BlurPadEffect(aspect, blurStrength, null);
+            geo = new BlurPadEffect(aspect, blurStrength, null, null, 0f, 0f, null);
         }
         List<Effect> fx = new ArrayList<Effect>();
         fx.add(geo);
-        runTransform(call, MediaItem.fromUri(inputUri), fx);
+        runTransform(call, MediaItem.fromUri(inputUri), fx, new ArrayList<AudioProcessor>(), false);
     }
 
     // ---------- v2 API: pick() then export() ----------
@@ -163,6 +164,16 @@ public class ReelfitExportPlugin extends Plugin {
         int adjB = call.getInt("adjB", 100);
         int adjC = call.getInt("adjC", 100);
         int adjS = call.getInt("adjS", 100);
+        Double spD = call.getDouble("speed");
+        final double speed = spD != null ? spD.doubleValue() : 1.0;
+        int volume = call.getInt("volume", 100);
+        Double bfD = call.getDouble("borderFrac");
+        float borderFrac = bfD != null ? bfD.floatValue() : 0f;
+        Double rfD = call.getDouble("radiusFrac");
+        float radiusFrac = rfD != null ? rfD.floatValue() : 0f;
+        float[] borderRgb = parseHex(call.getString("borderColor", "#FFFFFF"));
+        String bgImagePath = call.getString("bgImage", null);
+        JSObject text = call.getObject("text", null);
         Double tS = call.getDouble("trimStartMs");
         Double tE = call.getDouble("trimEndMs");
         long trimStart = tS != null ? tS.longValue() : -1L;
@@ -177,21 +188,54 @@ public class ReelfitExportPlugin extends Plugin {
         }
 
         List<Effect> fx = FilterFx.chain(filter, adjB, adjC, adjS);
+        if (speed != 1.0) {
+            fx.add(new SpeedChangeEffect((float) speed));
+        }
         Effect geo;
         if ("fill".equals(mode)) {
             geo = Presentation.createForAspectRatio(aspect, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP);
         } else if ("letterbox".equals(mode)) {
             geo = Presentation.createForAspectRatio(aspect, Presentation.LAYOUT_SCALE_TO_FIT);
+        } else if ("image".equals(mode) && bgImagePath != null) {
+            geo = new BlurPadEffect(aspect, blurStrength, null, bgImagePath, borderFrac, radiusFrac, borderRgb);
         } else if ("color".equals(mode)) {
-            geo = new BlurPadEffect(aspect, blurStrength, bgRgb);
+            geo = new BlurPadEffect(aspect, blurStrength, bgRgb, null, borderFrac, radiusFrac, borderRgb);
         } else {
-            geo = new BlurPadEffect(aspect, blurStrength, null);
+            geo = new BlurPadEffect(aspect, blurStrength, null, null, borderFrac, radiusFrac, borderRgb);
         }
         fx.add(geo);
-        runTransform(call, mb.build(), fx);
+        if (text != null) {
+            String tv = text.optString("value", "");
+            if (tv != null && tv.trim().length() > 0) {
+                float[] tRgb = parseHex(text.optString("color", "#FFFFFF"));
+                float sizeFrac = (float) text.optDouble("sizeFrac", 0.045);
+                float posY = (float) text.optDouble("posY", -0.72);
+                fx.add(TextFx.overlay(tv, tRgb, sizeFrac, posY));
+            }
+        }
+
+        List<AudioProcessor> aud = new ArrayList<AudioProcessor>();
+        boolean removeAudio = false;
+        if (volume <= 0) {
+            removeAudio = true;
+        } else {
+            if (speed != 1.0) {
+                SonicAudioProcessor sonic = new SonicAudioProcessor();
+                sonic.setSpeed((float) speed);
+                aud.add(sonic);
+            }
+            if (volume != 100) {
+                float v = Math.min(2f, volume / 100f);
+                ChannelMixingAudioProcessor mix = new ChannelMixingAudioProcessor();
+                mix.putChannelMixingMatrix(new ChannelMixingMatrix(1, 1, new float[] { v }));
+                mix.putChannelMixingMatrix(new ChannelMixingMatrix(2, 2, new float[] { v, 0f, 0f, v }));
+                aud.add(mix);
+            }
+        }
+        runTransform(call, mb.build(), fx, aud, removeAudio);
     }
 
-    private void runTransform(final PluginCall call, final MediaItem mediaItem, final List<Effect> videoFx) {
+    private void runTransform(final PluginCall call, final MediaItem mediaItem, final List<Effect> videoFx, final List<AudioProcessor> audioFx, final boolean removeAudio) {
         final File outFile = new File(getContext().getCacheDir(),
                 "reelfit_" + System.currentTimeMillis() + ".mp4");
 
@@ -200,9 +244,10 @@ public class ReelfitExportPlugin extends Plugin {
             public void run() {
                 try {
                     Effects effects = new Effects(
-                            new ArrayList<AudioProcessor>(),
+                            audioFx,
                             videoFx);
                     EditedMediaItem item = new EditedMediaItem.Builder(mediaItem)
+                            .setRemoveAudio(removeAudio)
                             .setEffects(effects)
                             .build();
 
@@ -220,6 +265,7 @@ public class ReelfitExportPlugin extends Plugin {
                                     JSObject ret = new JSObject();
                                     ret.put("saved", saved);
                                     ret.put("durationMs", System.currentTimeMillis() - exportStartMs);
+                                    ret.put("uri", lastSavedUri != null ? lastSavedUri.toString() : "");
                                     call.resolve(ret);
                                 }
 
@@ -265,6 +311,82 @@ public class ReelfitExportPlugin extends Plugin {
         activeTransformer = null;
     }
 
+    @PluginMethod
+    public void pickImage(PluginCall call) {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("image/*");
+        startActivityForResult(call, intent, "onImagePicked");
+    }
+
+    @ActivityCallback
+    private void onImagePicked(final PluginCall call, ActivityResult result) {
+        if (call == null) return;
+        if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null || result.getData().getData() == null) {
+            call.reject("Cancelled");
+            return;
+        }
+        final Uri uri = result.getData().getData();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    File dir = getContext().getCacheDir();
+                    File[] old = dir.listFiles();
+                    if (old != null) {
+                        for (File fo : old) {
+                            if (fo.getName().startsWith("reelfit_bg_")) fo.delete();
+                        }
+                    }
+                    File dst = new File(dir, "reelfit_bg_" + System.currentTimeMillis() + ".img");
+                    InputStream in = getContext().getContentResolver().openInputStream(uri);
+                    OutputStream out = new FileOutputStream(dst);
+                    byte[] buf = new byte[65536];
+                    int n;
+                    while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                    in.close();
+                    out.close();
+                    JSObject ret = new JSObject();
+                    ret.put("path", dst.getAbsolutePath());
+                    call.resolve(ret);
+                } catch (Exception e) {
+                    call.reject("Image import failed: " + e.getMessage());
+                }
+            }
+        }).start();
+    }
+
+    @PluginMethod
+    public void shareVideo(PluginCall call) {
+        String uriStr = call.getString("uri", null);
+        if (uriStr == null || uriStr.length() == 0) { call.reject("Missing uri"); return; }
+        try {
+            Intent send = new Intent(Intent.ACTION_SEND);
+            send.setType("video/mp4");
+            send.putExtra(Intent.EXTRA_STREAM, Uri.parse(uriStr));
+            send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            getActivity().startActivity(Intent.createChooser(send, "Share video"));
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Share failed: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void openVideo(PluginCall call) {
+        String uriStr = call.getString("uri", null);
+        if (uriStr == null || uriStr.length() == 0) { call.reject("Missing uri"); return; }
+        try {
+            Intent view = new Intent(Intent.ACTION_VIEW);
+            view.setDataAndType(Uri.parse(uriStr), "video/mp4");
+            view.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            getActivity().startActivity(view);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Open failed: " + e.getMessage());
+        }
+    }
+
     private String saveToMovies(File src) {
         try {
             String name = "Reelfit_" + System.currentTimeMillis() + ".mp4";
@@ -284,6 +406,7 @@ public class ReelfitExportPlugin extends Plugin {
             while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
             in.close();
             out.close();
+            lastSavedUri = dest;
             return "Movies/Reelfit/" + name;
         } catch (Exception e) {
             return null;
