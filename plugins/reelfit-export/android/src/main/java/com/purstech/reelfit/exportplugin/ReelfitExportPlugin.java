@@ -72,7 +72,7 @@ public class ReelfitExportPlugin extends Plugin {
         if ("letterbox".equals(mode)) {
             geo = Presentation.createForAspectRatio(aspect, Presentation.LAYOUT_SCALE_TO_FIT);
         } else {
-            geo = new BlurPadEffect(aspect, blurStrength, null, null, 0f, 0f, null);
+            geo = new BlurPadEffect(aspect, blurStrength, null, null, 0f, 0f, null, null, null, 0f, 0f);
         }
         List<Effect> fx = new ArrayList<Effect>();
         fx.add(geo);
@@ -174,6 +174,19 @@ public class ReelfitExportPlugin extends Plugin {
         float[] borderRgb = parseHex(call.getString("borderColor", "#FFFFFF"));
         String bgImagePath = call.getString("bgImage", null);
         JSObject text = call.getObject("text", null);
+        String textVal = null;
+        float[] textRgb = null;
+        float textSize = 0.045f;
+        float textPosY = -0.72f;
+        if (text != null) {
+            String tv = text.optString("value", "");
+            if (tv != null && tv.trim().length() > 0) {
+                textVal = tv.trim();
+                textRgb = parseHex(text.optString("color", "#FFFFFF"));
+                textSize = (float) text.optDouble("sizeFrac", 0.045);
+                textPosY = (float) text.optDouble("posY", -0.72);
+            }
+        }
         Double tS = call.getDouble("trimStartMs");
         Double tE = call.getDouble("trimEndMs");
         long trimStart = tS != null ? tS.longValue() : -1L;
@@ -192,26 +205,24 @@ public class ReelfitExportPlugin extends Plugin {
             fx.add(new SpeedChangeEffect((float) speed));
         }
         Effect geo;
+        boolean pad = false;
         if ("fill".equals(mode)) {
             geo = Presentation.createForAspectRatio(aspect, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP);
         } else if ("letterbox".equals(mode)) {
             geo = Presentation.createForAspectRatio(aspect, Presentation.LAYOUT_SCALE_TO_FIT);
         } else if ("image".equals(mode) && bgImagePath != null) {
-            geo = new BlurPadEffect(aspect, blurStrength, null, bgImagePath, borderFrac, radiusFrac, borderRgb);
+            pad = true;
+            geo = new BlurPadEffect(aspect, blurStrength, null, bgImagePath, borderFrac, radiusFrac, borderRgb, textVal, textRgb, textSize, textPosY);
         } else if ("color".equals(mode)) {
-            geo = new BlurPadEffect(aspect, blurStrength, bgRgb, null, borderFrac, radiusFrac, borderRgb);
+            pad = true;
+            geo = new BlurPadEffect(aspect, blurStrength, bgRgb, null, borderFrac, radiusFrac, borderRgb, textVal, textRgb, textSize, textPosY);
         } else {
-            geo = new BlurPadEffect(aspect, blurStrength, null, null, borderFrac, radiusFrac, borderRgb);
+            pad = true;
+            geo = new BlurPadEffect(aspect, blurStrength, null, null, borderFrac, radiusFrac, borderRgb, textVal, textRgb, textSize, textPosY);
         }
         fx.add(geo);
-        if (text != null) {
-            String tv = text.optString("value", "");
-            if (tv != null && tv.trim().length() > 0) {
-                float[] tRgb = parseHex(text.optString("color", "#FFFFFF"));
-                float sizeFrac = (float) text.optDouble("sizeFrac", 0.045);
-                float posY = (float) text.optDouble("posY", -0.72);
-                fx.add(TextFx.overlay(tv, tRgb, sizeFrac, posY));
-            }
+        if (!pad && textVal != null) {
+            fx.add(new BlurPadEffect(-1f, 0, null, null, 0f, 0f, null, textVal, textRgb, textSize, textPosY));
         }
 
         List<AudioProcessor> aud = new ArrayList<AudioProcessor>();
