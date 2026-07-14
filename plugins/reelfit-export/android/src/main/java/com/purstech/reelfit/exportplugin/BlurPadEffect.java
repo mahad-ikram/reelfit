@@ -44,10 +44,12 @@ public final class BlurPadEffect implements GlEffect {
     private final float[] textRgb;
     private final float textSizeFrac;
     private final float textPosY;
+    private final float textPosX;
 
     public BlurPadEffect(float targetAspect, int blurStrength, float[] bgRgb,
                          String bgImagePath, float borderFrac, float radiusFrac, float[] borderRgb,
-                         String textValue, float[] textRgb, float textSizeFrac, float textPosY) {
+                         String textValue, float[] textRgb, float textSizeFrac, float textPosY,
+                         float textPosX) {
         this.targetAspect = targetAspect;
         this.strengthT = Math.max(0, Math.min(100, blurStrength)) / 100f;
         this.bgRgb = bgRgb;
@@ -59,6 +61,7 @@ public final class BlurPadEffect implements GlEffect {
         this.textRgb = textRgb != null ? textRgb : new float[] { 1f, 1f, 1f };
         this.textSizeFrac = textSizeFrac > 0f ? textSizeFrac : 0.045f;
         this.textPosY = textPosY;
+        this.textPosX = textPosX;
     }
 
     @Override
@@ -275,10 +278,14 @@ public final class BlurPadEffect implements GlEffect {
                         float sx = (float) tb.getWidth() / outW;
                         float sy = (float) tb.getHeight() / outH;
                         float cy = (cfg.textPosY + 1f) / 2f;
-                        float half = sy / 2f + 0.03f;
-                        if (cy < half) cy = half;
-                        if (cy > 1f - half) cy = 1f - half;
-                        textRect = new float[] { 0.5f - sx / 2f, cy - sy / 2f, sx, sy };
+                        float halfY = sy / 2f + 0.03f;
+                        if (cy < halfY) cy = halfY;
+                        if (cy > 1f - halfY) cy = 1f - halfY;
+                        float cx = cfg.textPosX;
+                        float halfX = sx / 2f + 0.02f;
+                        if (cx < halfX) cx = halfX;
+                        if (cx > 1f - halfX) cx = 1f - halfX;
+                        textRect = new float[] { cx - sx / 2f, cy - sy / 2f, sx, sy };
                         textTex = uploadBitmap(tb);
                         tb.recycle();
                     }

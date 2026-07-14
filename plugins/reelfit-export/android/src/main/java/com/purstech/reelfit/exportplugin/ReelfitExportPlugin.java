@@ -72,7 +72,7 @@ public class ReelfitExportPlugin extends Plugin {
         if ("letterbox".equals(mode)) {
             geo = Presentation.createForAspectRatio(aspect, Presentation.LAYOUT_SCALE_TO_FIT);
         } else {
-            geo = new BlurPadEffect(aspect, blurStrength, null, null, 0f, 0f, null, null, null, 0f, 0f);
+            geo = new BlurPadEffect(aspect, blurStrength, null, null, 0f, 0f, null, null, null, 0f, 0f, 0.5f);
         }
         List<Effect> fx = new ArrayList<Effect>();
         fx.add(geo);
@@ -178,6 +178,7 @@ public class ReelfitExportPlugin extends Plugin {
         float[] textRgb = null;
         float textSize = 0.045f;
         float textPosY = -0.72f;
+        float textPosX = 0.5f;
         if (text != null) {
             String tv = text.optString("value", "");
             if (tv != null && tv.trim().length() > 0) {
@@ -185,6 +186,7 @@ public class ReelfitExportPlugin extends Plugin {
                 textRgb = parseHex(text.optString("color", "#FFFFFF"));
                 textSize = (float) text.optDouble("sizeFrac", 0.045);
                 textPosY = (float) text.optDouble("posY", -0.72);
+                textPosX = (float) text.optDouble("posX", 0.5);
             }
         }
         Double tS = call.getDouble("trimStartMs");
@@ -209,17 +211,17 @@ public class ReelfitExportPlugin extends Plugin {
             geo = Presentation.createForAspectRatio(aspect, Presentation.LAYOUT_SCALE_TO_FIT);
         } else if ("image".equals(mode) && bgImagePath != null) {
             pad = true;
-            geo = new BlurPadEffect(aspect, blurStrength, null, bgImagePath, borderFrac, radiusFrac, borderRgb, textVal, textRgb, textSize, textPosY);
+            geo = new BlurPadEffect(aspect, blurStrength, null, bgImagePath, borderFrac, radiusFrac, borderRgb, textVal, textRgb, textSize, textPosY, textPosX);
         } else if ("color".equals(mode)) {
             pad = true;
-            geo = new BlurPadEffect(aspect, blurStrength, bgRgb, null, borderFrac, radiusFrac, borderRgb, textVal, textRgb, textSize, textPosY);
+            geo = new BlurPadEffect(aspect, blurStrength, bgRgb, null, borderFrac, radiusFrac, borderRgb, textVal, textRgb, textSize, textPosY, textPosX);
         } else {
             pad = true;
-            geo = new BlurPadEffect(aspect, blurStrength, null, null, borderFrac, radiusFrac, borderRgb, textVal, textRgb, textSize, textPosY);
+            geo = new BlurPadEffect(aspect, blurStrength, null, null, borderFrac, radiusFrac, borderRgb, textVal, textRgb, textSize, textPosY, textPosX);
         }
         fx.add(geo);
         if (!pad && textVal != null) {
-            fx.add(new BlurPadEffect(-1f, 0, null, null, 0f, 0f, null, textVal, textRgb, textSize, textPosY));
+            fx.add(new BlurPadEffect(-1f, 0, null, null, 0f, 0f, null, textVal, textRgb, textSize, textPosY, textPosX));
         }
 
         List<AudioProcessor> aud = new ArrayList<AudioProcessor>();
