@@ -201,9 +201,6 @@ public class ReelfitExportPlugin extends Plugin {
         }
 
         List<Effect> fx = FilterFx.chain(filter, adjB, adjC, adjS);
-        if (speed != 1.0) {
-            fx.add(new SpeedChangeEffect((float) speed));
-        }
         Effect geo;
         boolean pad = false;
         if ("fill".equals(mode)) {
@@ -226,23 +223,7 @@ public class ReelfitExportPlugin extends Plugin {
         }
 
         List<AudioProcessor> aud = new ArrayList<AudioProcessor>();
-        boolean removeAudio = false;
-        if (volume <= 0) {
-            removeAudio = true;
-        } else {
-            if (speed != 1.0) {
-                SonicAudioProcessor sonic = new SonicAudioProcessor();
-                sonic.setSpeed((float) speed);
-                aud.add(sonic);
-            }
-            if (volume != 100) {
-                float v = Math.min(2f, volume / 100f);
-                ChannelMixingAudioProcessor mix = new ChannelMixingAudioProcessor();
-                mix.putChannelMixingMatrix(new ChannelMixingMatrix(1, 1, new float[] { v }));
-                mix.putChannelMixingMatrix(new ChannelMixingMatrix(2, 2, new float[] { v, 0f, 0f, v }));
-                aud.add(mix);
-            }
-        }
+        boolean removeAudio = (volume <= 0);
         runTransform(call, mb.build(), fx, aud, removeAudio);
     }
 
