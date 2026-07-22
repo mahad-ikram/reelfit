@@ -14,8 +14,12 @@ import androidx.activity.result.ActivityResult;
 import androidx.media3.common.Effect;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.audio.AudioProcessor;
+import androidx.media3.common.audio.ChannelMixingAudioProcessor;
+import androidx.media3.common.audio.ChannelMixingMatrix;
+import androidx.media3.common.audio.SonicAudioProcessor;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.effect.Presentation;
+import androidx.media3.effect.SpeedChangeEffect;
 import androidx.media3.transformer.Composition;
 import androidx.media3.transformer.EditedMediaItem;
 import androidx.media3.transformer.Effects;
@@ -226,6 +230,26 @@ public class ReelfitExportPlugin extends Plugin {
 
         List<AudioProcessor> aud = new ArrayList<AudioProcessor>();
         boolean removeAudio = (volume <= 0);
+
+        // M6b: real speed. Video timestamps AND audio must both change or they desync.
+        if (speed > 0 && Math.abs(speed - 1.0) > 0.001) {
+            fx.add(new SpeedChangeEffect((float) speed));
+            if (!removeAudio) {
+                SonicAudioProcessor sonic = new SonicAudioProcessor();
+                sonic.setSpeed((float) speed);
+                aud.add(sonic);
+            }
+        }
+
+        // M6b: real volume 0-100%. create(n,n) is identity; scaleBy applies the gain.
+        if (!removeAudio && volume != 100) {
+            float gain = Math.max(0f, Math.min(1f, volume / 100f));
+            ChannelMixingAudioProcessor mixer = new ChannelMixingAudioProcessor();
+            mixer.putChannelMixingMatrix(ChannelMixingMatrix.create(1, 1).scaleBy(gain));
+            mixer.putChannelMixingMatrix(ChannelMixingMatrix.create(2, 2).scaleBy(gain));
+            aud.add(mixer);
+        }
+
         runTransform(call, mb.build(), fx, aud, removeAudio);
     }
 
