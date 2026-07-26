@@ -991,13 +991,127 @@ function CoachMarks({
         cursor: "pointer"
       }}>{x ? "Got it" : "Next"}</button></div></div>;
 }
+function SampleFrame({
+  w: sfw,
+  h: sfh,
+  thumb: sft,
+  radius: sfr = 10
+}) {
+  let bg = sft ? `center/cover no-repeat url(${sft})` : "linear-gradient(180deg,#1E1442 0%,#3F2560 22%,#8E4668 44%,#DE7F5C 58%,#F6B478 66%,#C4636A 70%,#7B3E67 82%,#2C1A4A 100%)";
+  return <div style={{
+    position: "relative",
+    width: sfw,
+    height: sfh,
+    borderRadius: sfr,
+    overflow: "hidden",
+    boxShadow: "0 16px 38px rgba(0,0,0,0.62), 0 0 0 1px rgba(255,255,255,0.10)",
+    transition: "width .8s cubic-bezier(.62,.03,.23,1), height .8s cubic-bezier(.62,.03,.23,1)"
+  }}><div style={{
+      position: "absolute",
+      inset: 0,
+      background: bg,
+      transform: "scale(1.5)",
+      filter: "blur(14px) saturate(1.3) brightness(0.6)"
+    }} /><div style={{
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: "50%",
+      transform: "translateY(-50%)",
+      aspectRatio: "16 / 9",
+      background: bg
+    }} /></div>;
+}
+function FormatBanner({
+  thumb: fbt
+}) {
+  let S = [{
+    t: "9:16",
+    n: "Reels & TikTok",
+    w: 96,
+    h: 170
+  }, {
+    t: "1:1",
+    n: "Feed post",
+    w: 150,
+    h: 150
+  }, {
+    t: "16:9",
+    n: "YouTube",
+    w: 236,
+    h: 133
+  }, {
+    t: "4:5",
+    n: "Instagram feed",
+    w: 128,
+    h: 160
+  }];
+  let [fbk, fbs] = useState(0);
+  useEffect(() => {
+    let id = setInterval(() => fbs(v => (v + 1) % 4), 2200);
+    return () => clearInterval(id);
+  }, []);
+  let cur = S[fbk];
+  return <div style={{
+    marginTop: 22,
+    borderRadius: 20,
+    border: `1px solid ${d.line}`,
+    background: `radial-gradient(120% 130% at 50% -10%, rgba(108,58,255,0.22) 0%, rgba(108,58,255,0) 58%), ${d.card}`,
+    padding: "14px 14px 12px",
+    overflow: "hidden"
+  }}><div style={{
+      display: "flex",
+      alignItems: "baseline",
+      gap: 8,
+      marginBottom: 4
+    }}><span style={{
+        fontFamily: L.sans,
+        fontSize: 14,
+        fontWeight: 800,
+        letterSpacing: "-0.01em",
+        color: d.bone
+      }}>{"One clip, every format"}</span><span style={{
+        fontFamily: L.mono,
+        fontSize: 10,
+        color: d.muted
+      }}>{"auto blur-pad"}</span></div><div style={{
+      height: 176,
+      position: "relative",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }}>{S.map((s, j) => <div key={s.t} style={{
+        position: "absolute",
+        width: s.w,
+        height: s.h,
+        border: `1px dashed ${j === fbk ? "rgba(138,99,255,0.85)" : "rgba(138,99,255,0.30)"}`,
+        borderRadius: 9,
+        opacity: j === fbk ? 1 : 0.75,
+        transition: "border-color .5s, opacity .5s"
+      }} />)}<SampleFrame w={cur.w} h={cur.h} thumb={fbt} /></div><div style={{
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "baseline",
+      gap: 8,
+      paddingTop: 8,
+      fontFamily: L.mono,
+      fontSize: 11.5,
+      color: d.muted
+    }}><span style={{
+        color: d.bone,
+        fontWeight: 700,
+        letterSpacing: "0.04em"
+      }}>{cur.t}</span><span style={{
+        color: d.voltSoft
+      }}>{"\u00B7"}</span><span>{cur.n}</span></div></div>;
+}
 function HomeScreen({
   go: e,
   coach: t,
   endCoach: a,
   screenRef: o,
   recents: r,
-  resume: l
+  startFormat: sf
 }) {
   let n = useRef(null),
     s = useRef(null),
@@ -1015,7 +1129,32 @@ function HomeScreen({
       title: "Go further with Pro",
       body: "Unlock 4K, auto-captions, glow & image backgrounds, and batch export."
     }],
-    g = [["Beach reel", "9:16"], ["Product ad", "1:1"], ["Podcast clip", "16:9"]];
+    FM = [{
+      n: "Reels",
+      r: "9:16",
+      c: "#FF3C78"
+    }, {
+      n: "TikTok",
+      r: "9:16",
+      c: "#25F4EE"
+    }, {
+      n: "YouTube",
+      r: "16:9",
+      c: "#FF2020"
+    }, {
+      n: "IG Feed",
+      r: "4:5",
+      c: "#E1306C"
+    }, {
+      n: "Shorts",
+      r: "9:16",
+      c: "#FF2020"
+    }, {
+      n: "Square",
+      r: "1:1",
+      c: "#A9A5B6"
+    }],
+    thumb = r && r[0] && r[0].thumb || null;
   return <><div style={{
       flex: 1,
       overflowY: "auto",
@@ -1023,262 +1162,186 @@ function HomeScreen({
     }}><div style={{
         display: "flex",
         justifyContent: "space-between",
-        alignItems: "flex-start",
-        marginBottom: 22
+        alignItems: "center",
+        marginBottom: 14
       }}><div style={{
           display: "flex",
           alignItems: "center",
           gap: 10
         }}><img src={ps} alt="Reelfit" style={{
-            width: 38,
+            width: 34,
             display: "block"
-          }} /><div><Wordmark size={22} /><div style={{
-              marginTop: 2
-            }}><ByLine /></div></div></div><button ref={i} onClick={() => e("paywall")} style={{
+          }} /><Wordmark size={20} /></div><div style={{
           display: "flex",
           alignItems: "center",
-          gap: 5,
-          background: d.card,
-          border: `1px solid ${d.line}`,
-          borderRadius: 999,
-          padding: "6px 11px 6px 9px",
-          cursor: "pointer"
-        }}><Crown size={14} color={d.volt} /><span style={{
-            fontFamily: L.sans,
-            fontWeight: 800,
-            fontSize: 12,
-            color: d.bone
-          }}>{"Pro"}</span></button></div><div style={{
-        fontFamily: L.serif,
-        fontStyle: "italic",
-        fontSize: 20,
-        color: d.bone,
-        lineHeight: 1.25,
-        marginBottom: 16
-      }}>{"Make any video fit"}<br />{"any platform."}</div><button ref={n} onClick={() => e("import")} style={{
-        width: "100%",
-        background: "linear-gradient(120deg, #7C4DFF, #4A24C4 80%)",
-        border: "none",
-        borderRadius: 20,
-        padding: "22px 18px",
-        cursor: "pointer",
-        textAlign: "left",
-        boxShadow: `0 14px 34px ${d.voltDim}`,
-        marginBottom: 12,
-        position: "relative",
-        overflow: "hidden"
-      }}><div style={{
-          position: "absolute",
-          top: -40,
-          right: -30,
-          width: 150,
-          height: 150,
-          borderRadius: "50%",
-          background: "rgba(255,255,255,.14)",
-          filter: "blur(30px)"
-        }} /><div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 13
-        }}><div style={{
-            width: 46,
-            height: 46,
-            borderRadius: 14,
-            background: "rgba(255,255,255,0.18)",
+          gap: 8
+        }}><button onClick={() => e("about")} aria-label="About" style={{
+            width: 34,
+            height: 34,
+            borderRadius: 999,
+            background: "none",
+            border: `1px solid ${d.line}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            flex: "0 0 auto"
-          }}><Upload size={22} color="#fff" /></div><div style={{
-            flex: 1
-          }}><div style={{
-              fontFamily: L.sans,
-              fontWeight: 800,
-              fontSize: 16.5,
-              color: "#fff"
-            }}>{"Import video"}</div><div style={{
-              fontFamily: L.sans,
-              fontSize: 12,
-              color: "rgba(255,255,255,0.78)"
-            }}>{"From gallery or a shared clip"}</div></div><ChevronRight size={20} color="rgba(255,255,255,.85)" /></div></button><div style={{
-        display: "flex",
-        gap: 9,
-        marginBottom: 20
-      }}><button onClick={() => e("presets")} style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 7,
-          background: d.card,
-          border: `1px solid ${d.line}`,
-          borderRadius: 13,
-          padding: "11px 10px",
-          cursor: "pointer"
-        }}><Layers size={15} color={d.volt} /><span style={{
-            fontFamily: L.sans,
-            fontWeight: 700,
-            fontSize: 12,
-            color: d.bone
-          }}>{"Batch"}</span><span style={{
-            fontFamily: L.mono,
-            fontSize: 7.5,
-            fontWeight: 700,
-            color: "#fff",
-            background: d.volt,
-            padding: "1px 5px",
-            borderRadius: 4
-          }}>{"PRO"}</span></button><button onClick={() => e("presets")} style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 7,
-          background: d.card,
-          border: `1px solid ${d.line}`,
-          borderRadius: 13,
-          padding: "11px 10px",
-          cursor: "pointer"
-        }}><Share2 size={15} color={d.volt} /><span style={{
-            fontFamily: L.sans,
-            fontWeight: 700,
-            fontSize: 12,
-            color: d.bone
-          }}>{"Shared clips"}</span></button></div><div ref={s}><div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 10
-        }}><span style={{
-            fontFamily: L.sans,
-            fontWeight: 700,
-            fontSize: 12,
-            color: d.muted,
-            textTransform: "uppercase",
-            letterSpacing: "0.06em"
-          }}>{"Quick presets"}</span><button onClick={() => e("presets")} style={{
-            background: "none",
-            border: "none",
-            fontFamily: L.sans,
-            fontWeight: 700,
-            fontSize: 11.5,
-            color: d.volt,
-            cursor: "pointer",
-            padding: 4
-          }}>{"See all →"}</button></div><div style={{
-          display: "flex",
-          gap: 9,
-          overflowX: "auto",
-          paddingBottom: 6,
-          marginBottom: 16
-        }}>{[["Reels", "9:16", "#E1306C"], ["TikTok", "9:16", "#25F4EE"], ["YouTube", "16:9", "#FF0000"], ["IG Post", "4:5", "#C13584"], ["Square", "1:1", "#6C3AFF"]].map(([h, x, I]) => <button onClick={() => e("presets")} style={{
-            flex: "0 0 auto",
-            width: 92,
+            cursor: "pointer"
+          }}><Info size={16} color={d.muted} /></button><button ref={i} onClick={() => e("paywall")} style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
             background: d.card,
             border: `1px solid ${d.line}`,
-            borderRadius: 14,
-            padding: "11px 10px",
+            borderRadius: 999,
+            padding: "6px 11px 6px 9px",
+            cursor: "pointer"
+          }}><Crown size={14} color={d.volt} /><span style={{
+              fontFamily: L.sans,
+              fontWeight: 800,
+              fontSize: 12,
+              color: d.bone
+            }}>{"Pro"}</span></button></div></div><div style={{
+        fontFamily: L.serif,
+        fontStyle: "italic",
+        fontWeight: 600,
+        fontSize: 28,
+        lineHeight: 1.16,
+        letterSpacing: "-0.01em",
+        color: d.bone
+      }}>{"Make any video fit"}<br />{"any platform."}</div><button ref={n} onClick={() => e("import")} style={{
+        marginTop: 16,
+        width: "100%",
+        padding: 15,
+        borderRadius: 18,
+        border: "none",
+        background: "linear-gradient(135deg,#7C4BFF,#5A2FE0)",
+        boxShadow: `0 14px 34px ${d.voltDim}`,
+        display: "flex",
+        alignItems: "center",
+        gap: 13,
+        cursor: "pointer",
+        textAlign: "left"
+      }}><span style={{
+          width: 40,
+          height: 40,
+          borderRadius: 12,
+          flex: "0 0 auto",
+          background: "rgba(255,255,255,0.17)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
+        }}><Upload size={19} color="#fff" /></span><span style={{
+          flex: 1
+        }}><span style={{
+            display: "block",
+            fontFamily: L.sans,
+            fontSize: 17,
+            fontWeight: 800,
+            letterSpacing: "-0.01em",
+            color: "#fff"
+          }}>{"Import video"}</span><span style={{
+            display: "block",
+            fontFamily: L.sans,
+            fontSize: 12.5,
+            color: "rgba(255,255,255,0.72)",
+            marginTop: 2
+          }}>{"From gallery or a shared clip"}</span></span><ChevronRight size={19} color="rgba(255,255,255,0.8)" /></button><div style={{
+        display: "flex",
+        gap: 8,
+        marginTop: 9
+      }}><button onClick={() => e("paywall")} style={{
+          flex: 1,
+          padding: "10px 12px",
+          borderRadius: 12,
+          background: d.card,
+          border: `1px solid ${d.line}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 7,
+          cursor: "pointer"
+        }}><Layers size={15} color={d.mutedHi} /><span style={{
+            fontFamily: L.sans,
+            fontSize: 12.5,
+            fontWeight: 700,
+            color: d.mutedHi
+          }}>{"Batch"}</span><span style={{
+            fontFamily: L.mono,
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            padding: "2px 5px",
+            borderRadius: 4,
+            background: d.volt,
+            color: "#fff"
+          }}>{"PRO"}</span></button><button onClick={() => e("import")} style={{
+          flex: 1,
+          padding: "10px 12px",
+          borderRadius: 12,
+          background: d.card,
+          border: `1px solid ${d.line}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 7,
+          cursor: "pointer"
+        }}><Share2 size={15} color={d.mutedHi} /><span style={{
+            fontFamily: L.sans,
+            fontSize: 12.5,
+            fontWeight: 700,
+            color: d.mutedHi
+          }}>{"Shared clips"}</span></button></div><FormatBanner thumb={thumb} /><div ref={s}><div style={{
+          display: "flex",
+          alignItems: "baseline",
+          gap: 8,
+          marginTop: 24
+        }}><span style={{
+            fontFamily: L.sans,
+            fontSize: 15.5,
+            fontWeight: 800,
+            letterSpacing: "-0.01em",
+            color: d.bone
+          }}>{"Start in a format"}</span><span style={{
+            fontFamily: L.mono,
+            fontSize: 11,
+            color: d.muted
+          }}>{"tap to import"}</span></div><div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 9,
+          marginTop: 12
+        }}>{FM.map((F0, j) => {
+          let rr = is[F0.r] || [9, 16],
+            sc = Math.min(76 / rr[0], 58 / rr[1]),
+            mw = rr[0] * sc,
+            mh = rr[1] * sc;
+          return <button key={F0.n + j} onClick={() => sf ? sf(F0.r) : e("import")} style={{
+            background: d.card,
+            border: `1px solid ${d.line}`,
+            borderRadius: 15,
+            padding: "13px 12px 11px",
             cursor: "pointer",
-            textAlign: "left",
-            position: "relative",
-            overflow: "hidden"
-          }} key={h}><div style={{
-              position: "absolute",
-              top: -18,
-              right: -18,
-              width: 56,
-              height: 56,
-              borderRadius: "50%",
-              background: I,
-              opacity: 0.18,
-              filter: "blur(16px)"
-            }} /><div style={{
+            textAlign: "left"
+          }}><div style={{
+              height: 58,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              height: 40,
-              marginBottom: 8,
-              background: `linear-gradient(135deg, ${I}14, ${d.eclipse2} 75%)`,
-              border: `1px solid ${I}30`,
-              borderRadius: 9
-            }}><AspectGlyph r={x} color={I} /></div><div style={{
+              marginBottom: 9
+            }}><SampleFrame w={mw} h={mh} thumb={thumb} radius={5} /></div><span style={{
+              display: "block",
               fontFamily: L.sans,
-              fontWeight: 800,
-              fontSize: 11.5,
-              color: d.bone
-            }}>{h}</div><div style={{
-              fontFamily: L.mono,
-              fontSize: 9,
-              color: I,
-              marginTop: 1
-            }}>{x}</div></button>)}</div></div><div style={{
-        fontFamily: L.sans,
-        fontWeight: 700,
-        fontSize: 12,
-        color: d.muted,
-        textTransform: "uppercase",
-        letterSpacing: "0.06em",
-        marginBottom: 10
-      }}>{"Recent projects"}</div><div style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 8
-      }}>{(!r || r.length === 0) && <div style={{
-          background: d.card,
-          border: `1px dashed ${d.line2}`,
-          borderRadius: 14,
-          padding: "16px 14px",
-          fontFamily: L.sans,
-          fontSize: 12,
-          color: d.muted,
-          textAlign: "center"
-        }}>{"No projects yet — import your first clip above."}</div>}{(r || []).map(h => <button onClick={() => l(h)} style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          background: d.card,
-          border: `1px solid ${d.line}`,
-          borderRadius: 14,
-          padding: 11,
-          cursor: "pointer",
-          textAlign: "left"
-        }} key={h.id}><div style={{
-            width: 46,
-            height: 46,
-            borderRadius: 10,
-            background: h.thumb ? `url(${h.thumb}) center/cover` : _e,
-            backgroundSize: "cover",
-            flex: "0 0 auto",
-            border: `1px solid ${d.line2}`
-          }} /><div style={{
-            flex: 1
-          }}><div style={{
-              fontFamily: L.sans,
+              fontSize: 13.5,
               fontWeight: 700,
-              fontSize: 13,
               color: d.bone
-            }}>{"Export " + (h.ratio || "")}</div><div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              marginTop: 3
-            }}><span style={{
-                fontFamily: L.mono,
-                fontSize: 9,
-                color: d.volt,
-                background: "rgba(108,58,255,.14)",
-                padding: "1px 6px",
-                borderRadius: 5
-              }}>{h.ratio}</span><span style={{
-                fontFamily: L.sans,
-                fontSize: 10.5,
-                color: d.muted
-              }}>{h.when}</span></div></div><span style={{
-            fontFamily: L.sans,
-            fontWeight: 700,
-            fontSize: 11.5,
-            color: d.volt
-          }}>{"Resume"}</span></button>)}</div></div><BottomNav nav="home" go={e} />{t && <CoachMarks steps={f} screenRef={o} onDone={a} />}</>;
+            }}>{F0.n}</span><span style={{
+              display: "block",
+              fontFamily: L.mono,
+              fontSize: 10.5,
+              fontWeight: 500,
+              marginTop: 3,
+              color: F0.c
+            }}>{F0.r}</span></button>;
+        })}</div></div></div><BottomNav nav="home" go={e} />{t && <CoachMarks steps={f} screenRef={o} onDone={a} />}</>;
 }
 function Presets({
   go: e,
@@ -2663,7 +2726,7 @@ function About({
         fontFamily: L.mono,
         fontSize: 9.5,
         color: "rgba(139,135,152,0.6)"
-      }}>{"Reelfit v0.7.7 · M6b · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
+      }}>{"Reelfit v0.8.0 · Home + Nav · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
 }
 function TopBar({
   title: e,
@@ -2697,6 +2760,272 @@ function TopBar({
       justifyContent: "flex-end"
     }}>{a}</div></div>;
 }
+function EditorEmpty({
+  go: e,
+  onPick: t
+}) {
+  let a = [["Format", Maximize2], ["Background", Palette], ["Adjust", SlidersHorizontal], ["Filters", Sparkles], ["Text", Type], ["Trim", Scissors], ["Audio", Volume2], ["Speed", Gauge]];
+  return <><div style={{
+      display: "flex",
+      alignItems: "center",
+      padding: "14px 20px 6px",
+      flex: "0 0 auto"
+    }}><span style={{
+        fontFamily: L.sans,
+        fontSize: 17,
+        fontWeight: 800,
+        letterSpacing: "-0.01em",
+        color: d.bone
+      }}>{"Editor"}</span><div style={{
+        flex: 1
+      }} /><button onClick={() => e("paywall")} style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 5,
+        background: d.card,
+        border: `1px solid ${d.line}`,
+        borderRadius: 999,
+        padding: "6px 11px 6px 9px",
+        cursor: "pointer"
+      }}><Crown size={14} color={d.volt} /><span style={{
+          fontFamily: L.sans,
+          fontWeight: 800,
+          fontSize: 12,
+          color: d.bone
+        }}>{"Pro"}</span></button></div><div style={{
+      flex: 1,
+      overflowY: "auto",
+      padding: "10px 20px 20px"
+    }}><button onClick={t} style={{
+        width: "100%",
+        borderRadius: 18,
+        border: `1px solid ${d.line}`,
+        background: d.eclipse2,
+        height: 290,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 13,
+        cursor: "pointer",
+        padding: 20
+      }}><span style={{
+          width: 60,
+          height: 60,
+          borderRadius: 18,
+          background: "rgba(108,58,255,0.14)",
+          border: "1px solid rgba(138,99,255,0.34)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
+        }}><Upload size={26} color={d.voltSoft} /></span><span style={{
+          fontFamily: L.sans,
+          fontSize: 16,
+          fontWeight: 800,
+          letterSpacing: "-0.01em",
+          color: d.bone
+        }}>{"Add a clip to start editing"}</span><span style={{
+          fontFamily: L.sans,
+          fontSize: 13,
+          color: d.muted,
+          lineHeight: 1.45,
+          maxWidth: 210,
+          textAlign: "center"
+        }}>{"Pick a video and every tool below turns on."}</span><span style={{
+          marginTop: 3,
+          padding: "10px 20px",
+          borderRadius: 11,
+          background: d.volt,
+          fontFamily: L.sans,
+          fontSize: 13.5,
+          fontWeight: 800,
+          color: "#fff",
+          boxShadow: `0 8px 22px ${d.voltDim}`
+        }}>{"Choose video"}</span></button><div style={{
+        display: "flex",
+        gap: 8,
+        marginTop: 16,
+        overflowX: "auto",
+        opacity: 0.34
+      }}>{a.map(([nm, Icon]) => <button key={nm} onClick={t} style={{
+          flex: "0 0 auto",
+          width: 62,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 6,
+          background: "none",
+          border: "none",
+          cursor: "pointer"
+        }}><span style={{
+            width: 46,
+            height: 46,
+            borderRadius: 14,
+            background: d.card,
+            border: `1px solid ${d.line}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}><Icon size={20} color={d.mutedHi} /></span><span style={{
+            fontFamily: L.sans,
+            fontSize: 10.5,
+            fontWeight: 700,
+            color: d.mutedHi
+          }}>{nm}</span></button>)}</div><div style={{
+        marginTop: 14,
+        padding: "11px 13px",
+        borderRadius: 12,
+        background: "rgba(108,58,255,0.09)",
+        border: "1px solid rgba(138,99,255,0.24)",
+        fontFamily: L.sans,
+        fontSize: 12,
+        color: d.mutedHi,
+        lineHeight: 1.5
+      }}>{"Tools stay dim until a clip is loaded \u2014 tapping any of them opens your gallery."}</div></div><BottomNav nav="editor" go={e} /></>;
+}
+function ExportsScreen({
+  go: e,
+  recents: t,
+  resume: a
+}) {
+  let o = t || [],
+    r = l => {
+      try {
+        let n = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ReelfitExport;
+        n && l && n.shareVideo({
+          uri: l
+        }).catch(() => {});
+      } catch (n) {}
+    };
+  return <><div style={{
+      display: "flex",
+      alignItems: "center",
+      padding: "14px 20px 6px",
+      flex: "0 0 auto"
+    }}><span style={{
+        fontFamily: L.sans,
+        fontSize: 17,
+        fontWeight: 800,
+        letterSpacing: "-0.01em",
+        color: d.bone
+      }}>{"Exports"}</span><div style={{
+        flex: 1
+      }} /><span style={{
+        fontFamily: L.mono,
+        fontSize: 11,
+        color: d.muted
+      }}>{o.length ? o.length + (o.length === 1 ? " file" : " files") : ""}</span></div><div style={{
+      flex: 1,
+      overflowY: "auto",
+      padding: "8px 20px 20px"
+    }}>{o.length === 0 ? <div style={{
+        marginTop: 40,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 12,
+        textAlign: "center"
+      }}><span style={{
+          width: 60,
+          height: 60,
+          borderRadius: 18,
+          background: "rgba(108,58,255,0.14)",
+          border: "1px solid rgba(138,99,255,0.34)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
+        }}><Download size={26} color={d.voltSoft} /></span><span style={{
+          fontFamily: L.sans,
+          fontSize: 16,
+          fontWeight: 800,
+          color: d.bone
+        }}>{"Your finished videos land here"}</span><span style={{
+          fontFamily: L.sans,
+          fontSize: 13,
+          color: d.muted,
+          maxWidth: 230,
+          lineHeight: 1.45
+        }}>{"Export a clip and you can share it or send it to another platform from here."}</span><button onClick={() => e("home")} style={{
+          marginTop: 4,
+          padding: "11px 22px",
+          borderRadius: 12,
+          border: "none",
+          background: d.volt,
+          fontFamily: L.sans,
+          fontSize: 13.5,
+          fontWeight: 800,
+          color: "#fff",
+          cursor: "pointer",
+          boxShadow: `0 8px 22px ${d.voltDim}`
+        }}>{"Start a video"}</button></div> : o.map((l, j) => <div key={l.id || j} style={{
+        display: "flex",
+        gap: 12,
+        alignItems: "center",
+        marginTop: 9,
+        padding: 10,
+        borderRadius: 15,
+        background: d.card,
+        border: `1px solid ${d.line}`
+      }}><div style={{
+          position: "relative",
+          width: 52,
+          height: 70,
+          borderRadius: 9,
+          overflow: "hidden",
+          flex: "0 0 auto",
+          background: l.thumb ? `center/cover no-repeat url(${l.thumb})` : d.cardHi,
+          boxShadow: `0 0 0 1px ${d.line}`
+        }} /><div style={{
+          flex: 1,
+          minWidth: 0
+        }}><span style={{
+            display: "block",
+            fontFamily: L.sans,
+            fontSize: 13.5,
+            fontWeight: 700,
+            color: d.bone,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis"
+          }}>{l.saved ? "Saved to Movies" : "Reelfit export"}</span><div style={{
+            display: "flex",
+            gap: 7,
+            alignItems: "center",
+            marginTop: 5,
+            fontFamily: L.mono,
+            fontSize: 10,
+            color: d.muted
+          }}><span style={{
+              padding: "2px 6px",
+              borderRadius: 5,
+              background: "rgba(255,255,255,0.07)",
+              color: d.mutedHi
+            }}>{l.ratio || "9:16"}</span><span>{l.when || ""}</span></div><div style={{
+            display: "flex",
+            gap: 7,
+            marginTop: 8
+          }}><button onClick={() => r(l.uri)} style={{
+              padding: "6px 11px",
+              borderRadius: 9,
+              border: "none",
+              background: d.volt,
+              fontFamily: L.sans,
+              fontSize: 11.5,
+              fontWeight: 700,
+              color: "#fff",
+              cursor: "pointer"
+            }}>{"Share"}</button><button onClick={() => a && a(l)} style={{
+              padding: "6px 11px",
+              borderRadius: 9,
+              border: `1px solid ${d.line2}`,
+              background: "none",
+              fontFamily: L.sans,
+              fontSize: 11.5,
+              fontWeight: 700,
+              color: d.mutedHi,
+              cursor: "pointer"
+            }}>{"Re-export"}</button></div></div></div>)}</div><BottomNav nav="exports" go={e} /></>;
+}
 function BottomNav({
   nav: e,
   go: t
@@ -2706,13 +3035,13 @@ function BottomNav({
     I: Home,
     l: "Home"
   }, {
-    k: "paywall",
-    I: Crown,
-    l: "Pro"
+    k: "editor",
+    I: SlidersHorizontal,
+    l: "Editor"
   }, {
-    k: "about",
-    I: Info,
-    l: "About"
+    k: "exports",
+    I: Download,
+    l: "Exports"
   }];
   return <div style={{
     height: 60,
@@ -2997,11 +3326,11 @@ function App() {
       case "onboarding":
         return <Onboarding done={Te} />;
       case "home":
-        return <HomeScreen go={C => C === "import" ? c(() => t("presets")) : K(C)} coach={a} endCoach={() => o(!1)} screenRef={r} recents={F} resume={T} />;
+        return <HomeScreen go={C => C === "import" ? c(() => t("presets")) : K(C)} startFormat={C => { x(C); c(() => t("editor")); }} coach={a} endCoach={() => o(!1)} screenRef={r} recents={F} resume={T} />;
       case "presets":
         return <Presets go={K} setFmt={x} ensureMedia={C => M ? C() : c(C)} />;
       case "editor":
-        return <Editor go={K} initialRatio={h} onExport={E} media={M} onThumb={q} registerBack={n.current} />;
+        return M ? <Editor go={K} initialRatio={h} onExport={E} media={M} onThumb={q} registerBack={n.current} /> : <EditorEmpty go={K} onPick={() => c(() => t("editor"))} />;
       case "exporting":
         return <Exporting go={K} pct={I.pct} />;
       case "success":
@@ -3010,6 +3339,8 @@ function App() {
         return <Paywall go={K} />;
       case "about":
         return <About go={K} />;
+      case "exports":
+        return <ExportsScreen go={K} recents={F} resume={T} />;
       default:
         return <HomeScreen go={K} coach={!1} endCoach={() => {}} screenRef={r} />;
     }
