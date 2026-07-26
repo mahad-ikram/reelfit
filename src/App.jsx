@@ -146,13 +146,18 @@ function ColorSheet({
   initial: e,
   onCancel: t,
   onSet: a,
-  title: cst
+  title: cst,
+  onLive: ocl,
+  soft: cso
 }) {
   let o = hexToHsv(e || "#6C3AFF"),
     [r, l] = useState(o.h),
     [n, s] = useState(o.s),
     [i, f] = useState(o.v),
     g = hsvToRgb(r, n, i),
+    _live = (useEffect(() => {
+      ocl && ocl(g);
+    }, [r, n, i]), null),
     h = useRef(null),
     x = useRef(null),
     I = useRef(!1),
@@ -165,7 +170,10 @@ function ColorSheet({
       let c = x.current.getBoundingClientRect();
       l(Math.max(0, Math.min(1, (p - c.left) / c.width)) * 360);
     };
-  return <div style={pc} onClick={t}><div onClick={p => p.stopPropagation()} style={mc}><div style={gc} /><div style={{
+  return <div style={cso ? {
+    ...pc,
+    background: "rgba(5,5,12,0.32)"
+  } : pc} onClick={t}><div onClick={p => p.stopPropagation()} style={mc}><div style={gc} /><div style={{
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
@@ -1568,6 +1576,7 @@ function Editor({
     [tcol, sTcol] = useState(null),
     [ctar, sCtar] = useState("bg"),
     tcolSnap = useRef(null),
+    pcSnap = useRef(null),
     [gs, dr] = useState(!1),
     [hs, Ya] = useState(!1),
     [xs, Ul] = useState(null),
@@ -2070,7 +2079,66 @@ function Editor({
           color: d.bone,
           cursor: "pointer",
           marginBottom: 10
-        }}><Type size={15} color={d.volt} />{" "}{j ? "Edit text" : "Add text"}</button><div style={{
+        }}><Type size={15} color={d.volt} />{" "}{j ? "Edit text" : "Add text"}</button>{j && <div style={{
+          marginBottom: 10
+        }}><div style={{
+            display: "flex",
+            alignItems: "baseline",
+            gap: 7,
+            marginBottom: 7
+          }}><span style={{
+              fontFamily: L.sans,
+              fontSize: 11,
+              fontWeight: 600,
+              color: d.mutedHi
+            }}>{"Text colour"}</span><span style={{
+              fontFamily: L.mono,
+              fontSize: 9.5,
+              color: d.muted
+            }}>{"updates live"}</span></div><div style={{
+            display: "flex",
+            gap: 7,
+            alignItems: "center",
+            overflowX: "auto",
+            paddingBottom: 2
+          }}><button onClick={() => sTcol(null)} style={{
+              flex: "0 0 auto",
+              height: 28,
+              padding: "0 11px",
+              borderRadius: 999,
+              background: tcol ? "transparent" : d.volt,
+              border: `1px solid ${tcol ? d.line2 : d.volt}`,
+              fontFamily: L.sans,
+              fontSize: 10.5,
+              fontWeight: 700,
+              color: tcol ? d.mutedHi : "#fff",
+              cursor: "pointer"
+            }}>{"Auto"}</button>{lg.map(cc1 => <button key={cc1} onClick={() => sTcol(cc1)} style={{
+              flex: "0 0 auto",
+              width: 28,
+              height: 28,
+              borderRadius: "50%",
+              padding: 0,
+              background: cc1,
+              border: tcol === cc1 ? `2.5px solid ${d.bone}` : `1px solid ${d.line2}`,
+              cursor: "pointer"
+            }} />)}<button onClick={() => { pcSnap.current = tcol, sCtar("text"), dr(!0); }} style={{
+              flex: "0 0 auto",
+              width: 28,
+              height: 28,
+              borderRadius: "50%",
+              padding: 0,
+              background: "conic-gradient(from 0deg, #FF3B3B, #FFD23F, #3DDC97, #22C3D6, #4C6EF5, #A855F7, #FF5CA8, #FF3B3B)",
+              border: tcol && lg.indexOf(tcol) === -1 ? `2.5px solid ${d.bone}` : `1px solid ${d.line2}`,
+              cursor: "pointer",
+              position: "relative"
+            }}><span style={{
+                position: "absolute",
+                inset: 7,
+                borderRadius: "50%",
+                background: tcol && lg.indexOf(tcol) === -1 ? tcol : d.eclipse,
+                border: "1px solid rgba(255,255,255,0.35)"
+              }} /></button></div></div>}<div style={{
           display: "flex",
           gap: 7,
           overflowX: "auto"
@@ -2224,9 +2292,11 @@ function Editor({
         pos: xs,
         scale: fr
       } : null
-    })} />}{gs && <ColorSheet initial={ctar === "text" ? tcol || "#FFFFFF" : M} title={ctar === "text" ? "Text colour" : "Background colour"} onCancel={() => dr(!1)} onSet={k => {
+    })} />}{gs && <ColorSheet initial={ctar === "text" ? tcol || "#FFFFFF" : M} title={ctar === "text" ? "Text colour" : "Background colour"} soft={ctar === "text"} onLive={ctar === "text" ? sTcol : null} onCancel={() => {
+      ctar === "text" && sTcol(pcSnap.current), dr(!1);
+    }} onSet={k => {
       ctar === "text" ? sTcol(k) : p(k), dr(!1);
-    }} />}{hs && <TextSheet initialValue={Lt} initialStyle={yt} color={tcol} onColor={sTcol} onCustom={() => { sCtar("text"), dr(!0); }} onCancel={() => { sTcol(tcolSnap.current), Ya(!1); }} onDone={(k, qe) => {
+    }} />}{hs && <TextSheet initialValue={Lt} initialStyle={yt} color={tcol} onColor={sTcol} onCustom={() => { pcSnap.current = tcol, sCtar("text"), dr(!0); }} onCancel={() => { sTcol(tcolSnap.current), Ya(!1); }} onDone={(k, qe) => {
       ia(k), da(qe), z(!0), Ul(ql => ql || {
         x: 0.5,
         y: (1 - (Wt[qe] ? Wt[qe].posY : 0)) / 2
@@ -2788,7 +2858,7 @@ function About({
         fontFamily: L.mono,
         fontSize: 9.5,
         color: "rgba(139,135,152,0.6)"
-      }}>{"Reelfit v0.8.2 · Splash + Colour picker · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
+      }}>{"Reelfit v0.8.3 · Live text colour · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
 }
 function TopBar({
   title: e,
