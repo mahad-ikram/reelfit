@@ -145,7 +145,8 @@ var ug = ["#6C3AFF", "#0E0E16", "#F5F2EC", "#FF6B6B", "#FF9F45", "#FFD23F", "#3D
 function ColorSheet({
   initial: e,
   onCancel: t,
-  onSet: a
+  onSet: a,
+  title: cst
 }) {
   let o = hexToHsv(e || "#6C3AFF"),
     [r, l] = useState(o.h),
@@ -174,7 +175,7 @@ function ColorSheet({
           fontWeight: 800,
           fontSize: 16,
           color: d.bone
-        }}>{"Background colour"}</div><div style={{
+        }}>{cst || "Background colour"}</div><div style={{
           display: "flex",
           alignItems: "center",
           gap: 8
@@ -266,14 +267,16 @@ function ColorSheet({
 function TextSheet({
   initialValue: e,
   initialStyle: t,
-  initialColor: ic,
+  color: cl,
+  onColor: scl,
+  onCustom: ocu,
   onCancel: a,
   onDone: o,
   onRemove: r
 }) {
   let [l, n] = useState(e && e !== "YOUR TEXT" ? e : ""),
     [s, i] = useState(t || "Clean"),
-    [cl, scl] = useState(ic || null),
+
     f = Wt[s] || Wt.Clean,
     g = f.posY >= 0.5 ? "flex-end" : f.posY <= -0.5 ? "flex-start" : "center";
   return <div style={pc} onClick={a}><div onClick={h => h.stopPropagation()} style={mc}><div style={gc} /><div style={{
@@ -371,7 +374,23 @@ function TextSheet({
           background: cc0,
           border: cl === cc0 ? `2.5px solid ${d.bone}` : `1px solid ${d.line2}`,
           cursor: "pointer"
-        }} />)}</div><div style={{
+        }} />)}<button onClick={ocu} style={{
+          flex: "0 0 auto",
+          width: 30,
+          height: 30,
+          borderRadius: "50%",
+          padding: 0,
+          background: "conic-gradient(from 0deg, #FF3B3B, #FFD23F, #3DDC97, #22C3D6, #4C6EF5, #A855F7, #FF5CA8, #FF3B3B)",
+          border: cl && lg.indexOf(cl) === -1 ? `2.5px solid ${d.bone}` : `1px solid ${d.line2}`,
+          cursor: "pointer",
+          position: "relative"
+        }}><span style={{
+            position: "absolute",
+            inset: 8,
+            borderRadius: "50%",
+            background: cl && lg.indexOf(cl) === -1 ? cl : d.eclipse,
+            border: `1px solid rgba(255,255,255,0.35)`
+          }} /></button></div><div style={{
         display: "flex",
         gap: 10
       }}>{r && <button onClick={r} style={{
@@ -381,7 +400,7 @@ function TextSheet({
           color: "#FF7A7A",
           borderColor: "rgba(255,122,122,0.4)"
         }}>{"Remove"}</button>}<button onClick={a} style={ss}>{"Cancel"}</button><button onClick={() => {
-          l.trim() && o(l.trim(), s, cl);
+          l.trim() && o(l.trim(), s);
         }} style={{
           ...hc,
           opacity: l.trim() ? 1 : 0.5
@@ -1547,6 +1566,8 @@ function Editor({
     [Lt, ia] = useState("YOUR TEXT"),
     [yt, da] = useState("Clean"),
     [tcol, sTcol] = useState(null),
+    [ctar, sCtar] = useState("bg"),
+    tcolSnap = useRef(null),
     [gs, dr] = useState(!1),
     [hs, Ya] = useState(!1),
     [xs, Ul] = useState(null),
@@ -1757,7 +1778,7 @@ function Editor({
             background: k,
             cursor: "pointer",
             border: M === k ? `2px solid ${d.volt}` : `1px solid ${d.line2}`
-          }} key={k} />)}<button onClick={() => dr(!0)} style={{
+          }} key={k} />)}<button onClick={() => { sCtar("bg"), dr(!0); }} style={{
             width: 28,
             height: 28,
             borderRadius: 8,
@@ -2033,7 +2054,7 @@ function Editor({
           marginTop: 6
         }}>{ys}</div>}</div>}{n === "text" && <div style={{
         paddingTop: 2
-      }}><button onClick={() => Ya(!0)} style={{
+      }}><button onClick={() => { tcolSnap.current = tcol, Ya(!0); }} style={{
           width: "100%",
           display: "flex",
           alignItems: "center",
@@ -2203,10 +2224,10 @@ function Editor({
         pos: xs,
         scale: fr
       } : null
-    })} />}{gs && <ColorSheet initial={M} onCancel={() => dr(!1)} onSet={k => {
-      p(k), dr(!1);
-    }} />}{hs && <TextSheet initialValue={Lt} initialStyle={yt} initialColor={tcol} onCancel={() => Ya(!1)} onDone={(k, qe, cll) => {
-      ia(k), da(qe), sTcol(cll || null), z(!0), Ul(ql => ql || {
+    })} />}{gs && <ColorSheet initial={ctar === "text" ? tcol || "#FFFFFF" : M} title={ctar === "text" ? "Text colour" : "Background colour"} onCancel={() => dr(!1)} onSet={k => {
+      ctar === "text" ? sTcol(k) : p(k), dr(!1);
+    }} />}{hs && <TextSheet initialValue={Lt} initialStyle={yt} color={tcol} onColor={sTcol} onCustom={() => { sCtar("text"), dr(!0); }} onCancel={() => { sTcol(tcolSnap.current), Ya(!1); }} onDone={(k, qe) => {
+      ia(k), da(qe), z(!0), Ul(ql => ql || {
         x: 0.5,
         y: (1 - (Wt[qe] ? Wt[qe].posY : 0)) / 2
       }), Ya(!1);
@@ -2767,7 +2788,7 @@ function About({
         fontFamily: L.mono,
         fontSize: 9.5,
         color: "rgba(139,135,152,0.6)"
-      }}>{"Reelfit v0.8.1 · Splash + Text colour · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
+      }}>{"Reelfit v0.8.2 · Splash + Colour picker · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
 }
 function TopBar({
   title: e,
@@ -3154,34 +3175,34 @@ function Splash() {
     }} /><div style={{
       flex: 1
     }} /><img src={ps} alt="Reelfit" style={{
-      width: "25.5%",
-      maxWidth: 124,
+      width: "25%",
+      maxWidth: 122,
       display: "block",
       position: "relative"
     }} /><img src={Ic} alt="Reelfit" style={{
-      width: "47%",
-      maxWidth: 214,
+      width: "46%",
+      maxWidth: 210,
       display: "block",
       marginTop: "4.4%",
       position: "relative"
     }} /><div style={{
-      flex: 1.35
+      flex: 1.21
     }} /><div style={{
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-      gap: 6,
-      paddingBottom: "5.5%",
+      gap: 5,
+      paddingBottom: 30,
       position: "relative"
     }}><span style={{
         fontFamily: L.sans,
-        fontSize: 10,
+        fontSize: 9,
         fontWeight: 600,
-        letterSpacing: "0.01em",
-        color: "#9A93B2"
+        letterSpacing: "0.05em",
+        color: "#8E86A6"
       }}>{"Powered By"}</span><img src={Ig} alt="PursTech" style={{
-        width: "29.5%",
-        maxWidth: 134,
+        width: "34%",
+        maxWidth: 168,
         display: "block"
       }} /></div></div>;
 }
