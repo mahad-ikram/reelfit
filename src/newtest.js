@@ -20,7 +20,7 @@ const t=async(name,fn)=>{const b=errs.length; let ok=false; try{ ok=await fn(); 
 (async()=>{
   await wait(2400);
   await t('Home: new banner present',()=>has('One clip, every format'));
-  await t('Home: format grid present',()=>has('Start in a format')&&has('YouTube')&&has('IG Feed'));
+  await t('Home: format grid present',()=>has('Start in a format')&&has('YouTube')&&has('IG Post'));
   await t('Home: recents section removed',()=>!has('RECENT PROJECTS')&&!has('No projects yet'));
   await t('Nav: Home/Editor/Exports',()=>has('Editor')&&has('Exports'));
   await t('Nav -> Editor empty state',async()=>{tap('Editor');await wait(400);return has('Add a clip to start editing')&&has('Choose video');});
@@ -29,7 +29,7 @@ const t=async(name,fn)=>{const b=errs.length; let ok=false; try{ ok=await fn(); 
   await t('Exports -> Start a video -> Home',async()=>{tap('Start a video');await wait(400);return has('Start in a format');});
   await t('info button -> About',async()=>{tapAria('About');await wait(450);return has('PursTech')&&has('Follow PursTech');});
   await t('back to Home',async()=>{tap('Home');await wait(400);return has('Start in a format');});
-  await t('format tile YouTube -> Editor',async()=>{tap('YouTube');await wait(1400);return has('Background')&&has('Export');});
+  await t('format tile -> format screen -> Editor',async()=>{tap('YouTube');await wait(900);if(!has('Choose format'))return false;tap('YouTube');await wait(1300);return has('Background')&&has('Export');});
   await t('Editor tools still work',async()=>{tap('Speed');await wait(350);return has('2x')||has('1.5x');});
   await t('Export -> success -> Exports lists file',async()=>{
     tap('Export'); await wait(600); tap('Export video'); await wait(300);
