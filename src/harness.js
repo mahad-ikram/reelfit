@@ -1,0 +1,34 @@
+const { JSDOM, VirtualConsole } = require('jsdom');
+const fs = require('fs');
+process.on('unhandledRejection', () => {});
+const code = fs.readFileSync(process.argv[2], 'utf8');
+let errors = [], pass = 0, fail = 0;
+const vc = new VirtualConsole();
+vc.on('jsdomError', (e) => errors.push(e.message.split('\n')[0].slice(0,100)));
+const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>', { runScripts:'outside-only', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc });
+const w = dom.window;
+w.HTMLMediaElement.prototype.play = () => Promise.resolve();
+w.HTMLMediaElement.prototype.pause = () => {};
+w.HTMLCanvasElement.prototype.getContext = () => ({ drawImage(){}, fillRect(){}, fillText(){}, measureText:()=>({width:10}), clearRect(){}, beginPath(){}, arc(){}, fill(){}, save(){}, restore(){}, translate(){}, rotate(){} });
+w.HTMLCanvasElement.prototype.toDataURL = () => 'data:image/png;base64,x';
+w.Capacitor = { isNativePlatform:()=>true, convertFileSrc:(p)=>'file://'+p, Plugins:{ App:{ addListener:()=>Promise.resolve({remove(){}}), exitApp(){} }, SplashScreen:{ hide:()=>Promise.resolve() }, ReelfitExport:{ pick:async()=>({path:'/c.mp4',width:1080,height:1920,durationMs:15000,thumb:'data:image/png;base64,x'}), pickImage:async()=>({path:'/i.jpg'}), pickAudio:async()=>({path:'/a.mp3'}), export:async()=>({saved:true,uri:'content://x'}), saveToMovies:async()=>({uri:'content://y'}) } } };
+w.localStorage.setItem('rf_ob','1');
+try { w.eval(code); } catch(e){ errors.push('MODULE: '+e.message); }
+const root=()=>w.document.getElementById('root'); const txt=()=>(root().textContent||'');
+const tap=(l)=>{const e=[...w.document.querySelectorAll('div,button,span')].filter(x=>(x.textContent||'').trim()===l); if(!e.length)return false; e[e.length-1].dispatchEvent(new w.MouseEvent('click',{bubbles:true})); return true;};
+const wait=(ms)=>new Promise(r=>setTimeout(r,ms));
+const check=async(name,fn,ms=350)=>{const b=errors.length;const found=fn();await wait(ms);const alive=root().children.length>0;const ok=alive&&errors.length===b; if(found===false){console.log('  --  '+name);return;} console.log((ok?'  OK  ':'  X   ')+name+(ok?'':' <<< '+(alive?'ERR':'BLACK')+(errors[b]?': '+errors[b]:''))); ok?pass++:fail++;};
+(async()=>{
+  await wait(2400);
+  await check('launch -> Home',()=>true,100);
+  await check('tap Import video',()=>tap('Import video'),600);
+  await check('pick format -> Editor',()=>tap('Reels'),1400);
+  for(const t of ['Format','Background','Adjust','Filters','Text','Frame','Trim','Audio','Speed']) await check('tool: '+t,()=>tap(t),300);
+  await check('bg Blur',()=>tap('Blur')); await check('bg Color',()=>tap('Color')); await check('bg Image',()=>tap('Image')); await check('bg Glow',()=>tap('Glow')); await check('bg Black',()=>tap('Black'));
+  await check('speed 2x',()=>{tap('Speed');return tap('2x');},350); await check('speed 0.5x',()=>tap('0.5x')); await check('speed 1x',()=>tap('1x'));
+  await check('Audio tab',()=>tap('Audio')); await check('vol Mute',()=>tap('Mute')); await check('vol 50%',()=>tap('50%')); await check('vol 100%',()=>tap('100%'));
+  await check('Text tool',()=>tap('Text')); await check('open TextSheet',()=>tap('Add text'),420); await check('close sheet',()=>tap('Cancel'),420);
+  await check('Export sheet',()=>tap('Export'),520);
+  console.log('  '+'-'.repeat(48)); console.log('  PASSED: '+pass+'   FAILED: '+fail);
+  if(errors.length) console.log('  ERRORS:\n    '+[...new Set(errors)].join('\n    '));
+})();

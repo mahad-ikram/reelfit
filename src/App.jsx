@@ -794,7 +794,7 @@ export in seconds`,
           display: "flex",
           gap: 8,
           marginBottom: 6
-        }}>{[Sparkles, Scissors, Music].map((n, s) => <div style={{
+        }}>{[Sparkles, Scissors, Music].map((Icon, s) => <div style={{
             width: 26,
             height: 26,
             borderRadius: 8,
@@ -802,7 +802,7 @@ export in seconds`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center"
-          }} key={s}><n size={13} color="#fff" /></div>)}</div><div style={{
+          }} key={s}><Icon size={13} color="#fff" /></div>)}</div><div style={{
           position: "absolute",
           bottom: 46,
           left: 0,
@@ -2034,7 +2034,7 @@ function Editor({
       flex: "0 0 auto"
     }}>{Pc.map(({
         k,
-        I: qe,
+        I: Icon,
         l: ql,
         pro: Rc
       }) => {
@@ -2061,7 +2061,7 @@ function Editor({
             alignItems: "center",
             justifyContent: "center",
             position: "relative"
-          }}><qe size={17} color={Ja ? d.volt : d.mutedHi} />{Rc && <div style={{
+          }}><Icon size={17} color={Ja ? d.volt : d.mutedHi} />{Rc && <div style={{
               position: "absolute",
               top: -4,
               right: -4,
@@ -2609,7 +2609,7 @@ function About({
         gap: 8,
         marginBottom: 20
       }}>{t.map(({
-          I: a,
+          I: Icon,
           l: o,
           h: r
         }) => <div style={{
@@ -2620,7 +2620,7 @@ function About({
           border: `1px solid ${d.line}`,
           borderRadius: 12,
           padding: "12px 14px"
-        }} key={o}><a size={18} color={d.volt} /><div style={{
+        }} key={o}><Icon size={18} color={d.volt} /><div style={{
             flex: 1
           }}><div style={{
               fontFamily: L.sans,
@@ -2722,7 +2722,7 @@ function BottomNav({
     flex: "0 0 auto"
   }}>{a.map(({
       k: o,
-      I: r,
+      I: Icon,
       l
     }) => {
       let n = e === o;
@@ -2736,7 +2736,7 @@ function BottomNav({
         background: "none",
         border: "none",
         cursor: "pointer"
-      }} key={o}><r size={20} color={n ? d.volt : d.muted} /><span style={{
+      }} key={o}><Icon size={20} color={n ? d.volt : d.muted} /><span style={{
           fontFamily: L.sans,
           fontSize: 10,
           fontWeight: n ? 700 : 500,
