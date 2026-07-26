@@ -18,40 +18,55 @@ const swatch=(rgb,last)=>{const b=all().filter(x=>x.tagName==='BUTTON'&&(x.getAt
   (last?b[b.length-1]:b[0]).dispatchEvent(new w.MouseEvent('click',{bubbles:true})); return true;};
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const type=(el,v)=>{const st=Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype,'value').set; st.call(el,v); el.dispatchEvent(new w.Event('input',{bubbles:true}));};
+// the "+" chip adds a NEW layer; the main button edits the selected one
+const tapPlus=()=>{const b=all().filter(x=>x.tagName==='BUTTON'
+  && (x.textContent||'').trim()===''
+  && (x.getAttribute('style')||'').includes('border-radius: 999px')
+  && (x.getAttribute('style')||'').includes('dashed'));
+  if(!b.length) return false; b[b.length-1].dispatchEvent(new w.MouseEvent('click',{bubbles:true})); return true;};
+const addLayer=async(val,first)=>{
+  if(first) tap('Add text'); else if(!tapPlus()) return false;
+  await wait(450);
+  const ins=[...w.document.querySelectorAll('input')].filter(x=>(x.getAttribute('type')||'text')!=='range');
+  const i=ins.find(x=>/text/i.test(x.getAttribute('placeholder')||'')) || ins[ins.length-1];
+  if(!i) return false; type(i,val); await wait(220);
+  tap('Add to video'); await wait(450); return true; };
 const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catch(e){errs.push(n+': '+e.message);} ok=ok&&errs.length===b;
   console.log((ok?'  OK  ':'  X   ')+n+(ok?'':' <<< '+(errs[b]||'assert failed'))); ok?pass++:fail++;};
 (async()=>{
   await wait(2400);
   await t('reach Editor', async()=>{ tap('YouTube'); await wait(900); tap('YouTube'); await wait(1300); return txt().includes('Background'); });
-  await t('Text panel: no colour row before text', async()=>{ tap('Text'); await wait(400); return !txt().includes('Text colour'); });
-  await t('add text via sheet', async()=>{ tap('Add text'); await wait(450);
-    const i=[...w.document.querySelectorAll('input')].find(e=>e.type!=='range'); if(!i) return false; type(i,'LIVE'); await wait(250);
-    tap('Add to video'); await wait(500); return txt().includes('LIVE'); });
-  await t('Text panel now shows live colour row', ()=> txt().includes('Text colour') && txt().includes('updates live'));
-  await t('panel swatch recolours WITHOUT any modal', async()=>{
-    swatch('rgb(255, 210, 63)');           // yellow, panel row
-    await wait(300);
-    const noModal = !txt().includes('Set colour') && !txt().includes('Add to video');
-    return noModal && html().includes('color: rgb(255, 210, 63)');
+  await t('open Text tool', async()=>{ tap('Text'); await wait(400); return txt().includes('Add text'); });
+  await t('add layer 1', async()=>{ await addLayer('TITLE',true); return txt().includes('TITLE'); });
+  await t('add layer 2 (second text!)', async()=>{ await addLayer('@handle'); return txt().includes('TITLE') && txt().includes('@handle'); });
+  await t('both layers render on the video', ()=>{
+    const h=html(); return h.includes('TITLE') && h.includes('@handle');
   });
-  await t('preview text uses the live colour', ()=> html().includes('color: rgb(255, 210, 63)'));
-  await t('custom swatch opens picker with see-through backdrop', async()=>{
-    swatch('conic-gradient', true); await wait(450);
-    return txt().includes('Text colour') && html().includes('rgba(5, 5, 12, 0.32)');
+  await t('layers have independent colour', async()=>{
+    swatch('rgb(255, 210, 63)'); await wait(300);          // recolour selected layer only
+    const h=html(); return h.includes('color: rgb(255, 210, 63)');
   });
-  await t('Cancel reverts to previous colour', async()=>{ tap('Cancel'); await wait(400);
-    return html().includes('color: rgb(255, 210, 63)'); });
-  await t('Auto restores template colour', async()=>{ tap('Auto'); await wait(300);
-    return !html().includes('color: rgb(255, 210, 63)'); });
-  await t('live colour still exports', async()=>{
-    swatch('rgb(61, 220, 151)'); await wait(300);   // green
+  await t('add layers 3 and 4', async()=>{ await addLayer('THREE'); await addLayer('FOUR');
+    return txt().includes('THREE') && txt().includes('FOUR'); });
+  await t('capped at 4 layers', async()=>{
+    const plusGone = !tapPlus();      // + chip must disappear at 4 layers
+    return plusGone && !txt().includes('FIVE');
+  });
+  await t('export sends a texts[] array', async()=>{
     tap('Export'); await wait(600);
     const b=all().filter(x=>x.tagName==='BUTTON'&&(x.textContent||'').includes('Export 1080p'));
     if(b.length) b[b.length-1].dispatchEvent(new w.MouseEvent('click',{bubbles:true}));
     await wait(1000);
-    return captured && captured.text && captured.text.color==='#3DDC97';
+    return captured && Array.isArray(captured.texts) && captured.texts.length===4;
   });
+  await t('each layer carries value/color/sizeFrac/posX/posY', ()=>{
+    if(!captured||!captured.texts) return false;
+    return captured.texts.every(t=>typeof t.value==='string' && /^#/.test(t.color)
+      && typeof t.sizeFrac==='number' && typeof t.posX==='number' && typeof t.posY==='number');
+  });
+  await t('posY within native range (-1..1)', ()=> captured.texts.every(t=>t.posY>=-1&&t.posY<=1&&t.posX>=0&&t.posX<=1));
+  await t('legacy single text kept for old builds', ()=> captured.text && captured.text.value===captured.texts[0].value);
   console.log('  '+'-'.repeat(48)); console.log(`  PASSED: ${pass}   FAILED: ${fail}`);
   if(errs.length) console.log('  ERRORS:\n    '+[...new Set(errs)].join('\n    '));
-  if(captured&&captured.text) console.log('  exported text.color =', captured.text.color);
+  if(captured&&captured.texts) console.log('  texts[] =', JSON.stringify(captured.texts.map(t=>({v:t.value,c:t.color}))));
 })();

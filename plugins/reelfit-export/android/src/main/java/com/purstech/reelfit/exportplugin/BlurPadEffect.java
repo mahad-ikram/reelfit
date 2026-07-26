@@ -19,6 +19,9 @@ import androidx.media3.effect.BaseGlShaderProgram;
 import androidx.media3.effect.GlEffect;
 import androidx.media3.effect.GlShaderProgram;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Reelfit pad effect v4.1. Fits the video inside a target aspect ratio and
  * fills the padding with a smooth gaussian-blurred copy of the frame
@@ -40,11 +43,24 @@ public final class BlurPadEffect implements GlEffect {
     private final float borderFrac;
     private final float radiusFrac;
     private final float[] borderRgb;
-    private final String textValue;
-    private final float[] textRgb;
-    private final float textSizeFrac;
-    private final float textPosY;
-    private final float textPosX;
+    private final List<TextItem> texts;
+
+    /** One text overlay burned onto the frame. */
+    public static class TextItem {
+        public final String value;
+        public final float[] rgb;
+        public final float sizeFrac;
+        public final float posY;
+        public final float posX;
+
+        public TextItem(String value, float[] rgb, float sizeFrac, float posY, float posX) {
+            this.value = value;
+            this.rgb = rgb != null ? rgb : new float[] { 1f, 1f, 1f };
+            this.sizeFrac = sizeFrac > 0f ? sizeFrac : 0.045f;
+            this.posY = posY;
+            this.posX = posX;
+        }
+    }
 
     public BlurPadEffect(float targetAspect, int blurStrength, float[] bgRgb,
                          String bgImagePath, float borderFrac, float radiusFrac, float[] borderRgb,
@@ -57,11 +73,24 @@ public final class BlurPadEffect implements GlEffect {
         this.borderFrac = Math.max(0f, borderFrac);
         this.radiusFrac = Math.max(0f, radiusFrac);
         this.borderRgb = borderRgb != null ? borderRgb : new float[] { 1f, 1f, 1f };
-        this.textValue = textValue;
-        this.textRgb = textRgb != null ? textRgb : new float[] { 1f, 1f, 1f };
-        this.textSizeFrac = textSizeFrac > 0f ? textSizeFrac : 0.045f;
-        this.textPosY = textPosY;
-        this.textPosX = textPosX;
+        List<TextItem> one = new ArrayList<TextItem>();
+        if (textValue != null && textValue.trim().length() > 0) {
+            one.add(new TextItem(textValue, textRgb, textSizeFrac, textPosY, textPosX));
+        }
+        this.texts = one;
+    }
+
+    public BlurPadEffect(float targetAspect, int blurStrength, float[] bgRgb,
+                         String bgImagePath, float borderFrac, float radiusFrac, float[] borderRgb,
+                         List<TextItem> texts) {
+        this.targetAspect = targetAspect;
+        this.strengthT = Math.max(0, Math.min(100, blurStrength)) / 100f;
+        this.bgRgb = bgRgb;
+        this.bgImagePath = bgImagePath;
+        this.borderFrac = Math.max(0f, borderFrac);
+        this.radiusFrac = Math.max(0f, radiusFrac);
+        this.borderRgb = borderRgb != null ? borderRgb : new float[] { 1f, 1f, 1f };
+        this.texts = texts != null ? texts : new ArrayList<TextItem>();
     }
 
     @Override
@@ -272,20 +301,10 @@ public final class BlurPadEffect implements GlEffect {
                         bgKind = 1f;
                     }
                 }
-                if (textTex == -1 && cfg.textValue != null && cfg.textValue.length() > 0) {
-                    Bitmap tb = renderText(cfg.textValue, cfg.textRgb, cfg.textSizeFrac, outW, outH);
+                if (textTex == -1 && cfg.texts != null && !cfg.texts.isEmpty()) {
+                    Bitmap tb = renderTexts(cfg.texts, outW, outH);
                     if (tb != null) {
-                        float sx = (float) tb.getWidth() / outW;
-                        float sy = (float) tb.getHeight() / outH;
-                        float cy = (cfg.textPosY + 1f) / 2f;
-                        float halfY = sy / 2f + 0.03f;
-                        if (cy < halfY) cy = halfY;
-                        if (cy > 1f - halfY) cy = 1f - halfY;
-                        float cx = cfg.textPosX;
-                        float halfX = sx / 2f + 0.02f;
-                        if (cx < halfX) cx = halfX;
-                        if (cx > 1f - halfX) cx = 1f - halfX;
-                        textRect = new float[] { cx - sx / 2f, cy - sy / 2f, sx, sy };
+                        textRect = new float[] { 0f, 0f, 1f, 1f };
                         textTex = uploadBitmap(tb);
                         tb.recycle();
                     }
@@ -370,33 +389,70 @@ public final class BlurPadEffect implements GlEffect {
             return t[0];
         }
 
-        private static Bitmap renderText(String value, float[] rgb, float sizeFrac, int outW, int outH) {
+        private static final int MAX_TEXTS = 4;
+
+        /**
+         * Draws every overlay onto a single frame-sized transparent bitmap.
+         * The compose shader samples this with uTextRect = {0,0,1,1}, and flips Y
+         * (vec2(t.x, 1.0 - t.y)), so Canvas row 0 lands at the top of the frame.
+         */
+        private static Bitmap renderTexts(List<TextItem> items, int outW, int outH) {
+            Bitmap frame = null;
             try {
-                float px = Math.max(12f, sizeFrac * outH);
-                Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-                paint.setTypeface(Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD));
-                paint.setColor(Color.rgb(
-                        Math.round(rgb[0] * 255f),
-                        Math.round(rgb[1] * 255f),
-                        Math.round(rgb[2] * 255f)));
-                paint.setTextSize(px);
-                float tw = paint.measureText(value);
-                float maxW = outW * 0.9f;
-                if (tw > maxW) {
-                    px = px * maxW / tw;
+                frame = Bitmap.createBitmap(outW, outH, Bitmap.Config.ARGB_8888);
+                Canvas cv = new Canvas(frame);
+                int drawn = 0;
+                for (int i = 0; i < items.size(); i++) {
+                    if (drawn >= MAX_TEXTS) break;
+                    TextItem it = items.get(i);
+                    if (it == null || it.value == null || it.value.trim().length() == 0) continue;
+
+                    float px = Math.max(12f, it.sizeFrac * outH);
+                    Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                    paint.setTypeface(Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD));
+                    paint.setColor(Color.rgb(
+                            Math.round(it.rgb[0] * 255f),
+                            Math.round(it.rgb[1] * 255f),
+                            Math.round(it.rgb[2] * 255f)));
                     paint.setTextSize(px);
-                    tw = paint.measureText(value);
+                    float tw = paint.measureText(it.value);
+                    float maxW = outW * 0.9f;
+                    if (tw > maxW) {
+                        px = px * maxW / tw;
+                        paint.setTextSize(px);
+                        tw = paint.measureText(it.value);
+                    }
+                    paint.setShadowLayer(Math.max(2f, px * 0.08f), 0f, Math.max(1f, px * 0.04f), 0xB3000000);
+                    Paint.FontMetrics fm = paint.getFontMetrics();
+                    float th = fm.descent - fm.ascent;
+
+                    // Same clamping as before, in uv space (y up), then converted to Canvas (y down).
+                    float sy = th / outH;
+                    float sx = tw / outW;
+                    float cy = (it.posY + 1f) / 2f;
+                    float halfY = sy / 2f + 0.03f;
+                    if (cy < halfY) cy = halfY;
+                    if (cy > 1f - halfY) cy = 1f - halfY;
+                    float cx = it.posX;
+                    float halfX = sx / 2f + 0.02f;
+                    if (cx < halfX) cx = halfX;
+                    if (cx > 1f - halfX) cx = 1f - halfX;
+
+                    float centerXpx = cx * outW;
+                    float centerYpx = (1f - cy) * outH;
+                    float baseline = centerYpx - (fm.ascent + fm.descent) / 2f;
+                    cv.drawText(it.value, centerXpx - tw / 2f, baseline, paint);
+                    drawn++;
                 }
-                paint.setShadowLayer(Math.max(2f, px * 0.08f), 0f, Math.max(1f, px * 0.04f), 0xB3000000);
-                Paint.FontMetrics fm = paint.getFontMetrics();
-                int pad = Math.round(px * 0.25f);
-                int bw = Math.max(2, Math.round(tw) + pad * 2);
-                int bh = Math.max(2, Math.round(fm.descent - fm.ascent) + pad * 2);
-                Bitmap tb = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
-                Canvas cv = new Canvas(tb);
-                cv.drawText(value, pad, pad - fm.ascent, paint);
-                return tb;
+                if (drawn == 0) {
+                    frame.recycle();
+                    return null;
+                }
+                return frame;
             } catch (Exception e) {
+                if (frame != null) {
+                    try { frame.recycle(); } catch (Exception ignored) {}
+                }
                 return null;
             }
         }

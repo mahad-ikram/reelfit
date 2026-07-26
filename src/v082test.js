@@ -43,7 +43,7 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
 
   // ---------- text colour via the square picker ----------
   await t('open text sheet', async()=>{ tap('Text'); await wait(350); tap('Add text'); await wait(450);
-    const i=w.document.querySelector('input'); if(!i) return false; type(i,'COLOUR'); await wait(250);
+    const i=[...w.document.querySelectorAll('input')].find(e=>e.type!=='range'); if(!i) return false; type(i,'COLOUR'); await wait(250);
     return txt().includes('Colour') && txt().includes('Auto'); });
   await t('custom swatch opens "Text colour" picker', async()=>{
     const b=all().filter(x=>x.tagName==='BUTTON'&&(x.getAttribute('style')||'').includes('conic-gradient'));

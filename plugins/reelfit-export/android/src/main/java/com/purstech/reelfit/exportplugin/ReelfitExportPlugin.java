@@ -28,10 +28,13 @@ import androidx.media3.transformer.ExportResult;
 import androidx.media3.transformer.ProgressHolder;
 import androidx.media3.transformer.Transformer;
 
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
+
+import org.json.JSONObject;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
@@ -177,20 +180,32 @@ public class ReelfitExportPlugin extends Plugin {
         float radiusFrac = rfD != null ? rfD.floatValue() : 0f;
         float[] borderRgb = parseHex(call.getString("borderColor", "#FFFFFF"));
         String bgImagePath = call.getString("bgImage", null);
+        List<BlurPadEffect.TextItem> textItems = new ArrayList<BlurPadEffect.TextItem>();
+        JSArray textsArr = call.getArray("texts", null);
+        if (textsArr != null) {
+            for (int i = 0; i < textsArr.length(); i++) {
+                JSONObject to = textsArr.optJSONObject(i);
+                if (to == null) continue;
+                String tv = to.optString("value", "");
+                if (tv == null || tv.trim().length() == 0) continue;
+                textItems.add(new BlurPadEffect.TextItem(
+                        tv.trim(),
+                        parseHex(to.optString("color", "#FFFFFF")),
+                        (float) to.optDouble("sizeFrac", 0.045),
+                        (float) to.optDouble("posY", -0.72),
+                        (float) to.optDouble("posX", 0.5)));
+            }
+        }
         JSObject text = call.getObject("text", null);
-        String textVal = null;
-        float[] textRgb = null;
-        float textSize = 0.045f;
-        float textPosY = -0.72f;
-        float textPosX = 0.5f;
-        if (text != null) {
+        if (textItems.isEmpty() && text != null) {
             String tv = text.optString("value", "");
             if (tv != null && tv.trim().length() > 0) {
-                textVal = tv.trim();
-                textRgb = parseHex(text.optString("color", "#FFFFFF"));
-                textSize = (float) text.optDouble("sizeFrac", 0.045);
-                textPosY = (float) text.optDouble("posY", -0.72);
-                textPosX = (float) text.optDouble("posX", 0.5);
+                textItems.add(new BlurPadEffect.TextItem(
+                        tv.trim(),
+                        parseHex(text.optString("color", "#FFFFFF")),
+                        (float) text.optDouble("sizeFrac", 0.045),
+                        (float) text.optDouble("posY", -0.72),
+                        (float) text.optDouble("posX", 0.5)));
             }
         }
         Double tS = call.getDouble("trimStartMs");
@@ -215,17 +230,17 @@ public class ReelfitExportPlugin extends Plugin {
             geo = Presentation.createForAspectRatio(aspect, Presentation.LAYOUT_SCALE_TO_FIT);
         } else if ("image".equals(mode) && bgImagePath != null) {
             pad = true;
-            geo = new BlurPadEffect(aspect, blurStrength, null, bgImagePath, borderFrac, radiusFrac, borderRgb, textVal, textRgb, textSize, textPosY, textPosX);
+            geo = new BlurPadEffect(aspect, blurStrength, null, bgImagePath, borderFrac, radiusFrac, borderRgb, textItems);
         } else if ("color".equals(mode)) {
             pad = true;
-            geo = new BlurPadEffect(aspect, blurStrength, bgRgb, null, borderFrac, radiusFrac, borderRgb, textVal, textRgb, textSize, textPosY, textPosX);
+            geo = new BlurPadEffect(aspect, blurStrength, bgRgb, null, borderFrac, radiusFrac, borderRgb, textItems);
         } else {
             pad = true;
-            geo = new BlurPadEffect(aspect, blurStrength, null, null, borderFrac, radiusFrac, borderRgb, textVal, textRgb, textSize, textPosY, textPosX);
+            geo = new BlurPadEffect(aspect, blurStrength, null, null, borderFrac, radiusFrac, borderRgb, textItems);
         }
         fx.add(geo);
-        if (!pad && textVal != null) {
-            fx.add(new BlurPadEffect(-1f, 0, null, null, 0f, 0f, null, textVal, textRgb, textSize, textPosY, textPosX));
+        if (!pad && !textItems.isEmpty()) {
+            fx.add(new BlurPadEffect(-1f, 0, null, null, 0f, 0f, null, textItems));
         }
 
         List<AudioProcessor> aud = new ArrayList<AudioProcessor>();

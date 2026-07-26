@@ -597,13 +597,10 @@ function Preview({
   border: f,
   radius: g,
   borderColor: h,
-  showText: x,
-  textValue: I,
-  textStyle: S,
-  textColor: tcp,
-  textPos: A,
+  texts: TX,
+  selIndex: SI,
   onTextMove: M,
-  textScale: p,
+  onTextSelect: OS,
   trim: c,
   speed: m,
   vol: y,
@@ -714,27 +711,28 @@ function Preview({
       padding: "2px 5px",
       borderRadius: 4,
       letterSpacing: "0.1em"
-    }}>{"Reelfit"}</div>{x && (() => {
-      let z = Wt[S] || Wt.Clean,
-        U = A || {
+    }}>{"Reelfit"}</div>{TX && TX.length > 0 && TX.map((tl, ti) => {
+      let z = Wt[tl.style] || Wt.Clean,
+        U = tl.pos || {
           x: 0.5,
           y: (1 - z.posY) / 2
         },
-        $ = Math.max(8, Math.round(0.045 * ((p || 100) / 100) * E)),
-        b = (ue, Lt) => {
+        $ = Math.max(8, Math.round(0.045 * ((tl.scale || 100) / 100) * E)),
+        sel = ti === SI,
+        mv = (cx, cy) => {
           if (!te.current) return;
-          let ia = te.current.getBoundingClientRect(),
-            yt = (ue - ia.left) / ia.width,
-            da = (Lt - ia.top) / ia.height;
-          yt = Math.max(0.04, Math.min(0.96, yt)), da = Math.max(0.05, Math.min(0.95, da)), M && M({
-            x: yt,
-            y: da
+          let rc = te.current.getBoundingClientRect(),
+            nx = (cx - rc.left) / rc.width,
+            ny = (cy - rc.top) / rc.height;
+          nx = Math.max(0.04, Math.min(0.96, nx)), ny = Math.max(0.05, Math.min(0.95, ny)), M && M(ti, {
+            x: nx,
+            y: ny
           });
         };
-      return <div onPointerDown={ue => {
-        j.current = !0, ue.currentTarget.setPointerCapture(ue.pointerId), ue.stopPropagation();
-      }} onPointerMove={ue => {
-        j.current && b(ue.clientX, ue.clientY);
+      return <div key={tl.id || ti} onPointerDown={ev => {
+        j.current = !0, OS && OS(ti), ev.currentTarget.setPointerCapture(ev.pointerId), ev.stopPropagation();
+      }} onPointerMove={ev => {
+        j.current && mv(ev.clientX, ev.clientY);
       }} onPointerUp={() => {
         j.current = !1;
       }} style={{
@@ -748,7 +746,7 @@ function Preview({
         fontWeight: z.weight,
         fontSize: $,
         lineHeight: 1.15,
-        color: tcp || z.color,
+        color: tl.color || z.color,
         textShadow: z.shadow || "none",
         cursor: "move",
         touchAction: "none",
@@ -756,14 +754,14 @@ function Preview({
         WebkitUserSelect: "none",
         padding: "3px 7px",
         borderRadius: 6,
-        outline: "1px dashed rgba(255,255,255,0.55)",
+        outline: sel ? "1px dashed rgba(255,255,255,0.55)" : "1px dashed rgba(255,255,255,0.16)",
         outlineOffset: 2
       }}><span style={z.bgBox ? {
           background: z.bgBox,
           padding: "2px 8px",
           borderRadius: 5
-        } : {}}>{I || "YOUR TEXT"}</span></div>;
-    })()}</div>;
+        } : {}}>{tl.value || "YOUR TEXT"}</span></div>;
+    })}</div>;
 }
 function Onboarding({
   done: e
@@ -1568,19 +1566,65 @@ function Editor({
     [K, Te] = useState(0),
     [xt, C] = useState("#FFFFFF"),
     [N, te] = useState(0),
-    [j, z] = useState(!1),
+    [txs, sTxs] = useState([]),
+    [tsel, sTsel] = useState(0),
+    tNew = useRef(!1),
     [U, $] = useState([8, 92]),
     [b, ue] = useState(100),
-    [Lt, ia] = useState("YOUR TEXT"),
-    [yt, da] = useState("Clean"),
-    [tcol, sTcol] = useState(null),
     [ctar, sCtar] = useState("bg"),
     tcolSnap = useRef(null),
     pcSnap = useRef(null),
     [gs, dr] = useState(!1),
     [hs, Ya] = useState(!1),
-    [xs, Ul] = useState(null),
-    [fr, Cc] = useState(100),
+    tIdx = txs.length ? Math.min(tsel, txs.length - 1) : 0,
+    tcur = txs[tIdx] || null,
+    j = txs.length > 0,
+    Lt = tcur ? tcur.value : "YOUR TEXT",
+    yt = tcur ? tcur.style : "Clean",
+    tcol = tcur ? tcur.color : null,
+    xs = tcur ? tcur.pos : null,
+    fr = tcur ? tcur.scale : 100,
+    updAt = (ii, pp) => sTxs(tt => tt.map((oo, kk) => kk === ii ? {
+      ...oo,
+      ...(typeof pp === "function" ? pp(oo) : pp)
+    } : oo)),
+    updT = pp => updAt(tIdx, pp),
+    ia = vv => updT({
+      value: vv
+    }),
+    da = vv => updT({
+      style: vv
+    }),
+    sTcol = vv => updT({
+      color: vv
+    }),
+    Ul = vv => updT(oo => ({
+      pos: typeof vv === "function" ? vv(oo.pos) : vv
+    })),
+    Cc = vv => updT(oo => ({
+      scale: typeof vv === "function" ? vv(oo.scale) : vv
+    })),
+    defPos = ss => ({
+      x: 0.5,
+      y: (1 - (Wt[ss] ? Wt[ss].posY : 0)) / 2
+    }),
+    addLayer = () => {
+      if (txs.length >= 4) return;
+      sTxs(tt => tt.concat([{
+        id: Date.now() + Math.random(),
+        value: "",
+        style: "Clean",
+        color: null,
+        pos: defPos("Clean"),
+        scale: 100
+      }])), sTsel(txs.length), tNew.current = !0, Ya(!0);
+    },
+    editLayer = () => {
+      tNew.current = !1, tcolSnap.current = tcol, Ya(!0);
+    },
+    delLayer = ii => {
+      sTxs(tt => tt.filter((oo, kk) => kk !== ii)), sTsel(Math.max(0, ii - 1));
+    },
     Ls = useRef({}),
     [kc, wc] = useState(null),
     [ys, Is] = useState(""),
@@ -1704,7 +1748,7 @@ function Editor({
         b: w.b / 100,
         c: w.c / 100,
         s: w.s / 100
-      }} filterCss={Ac} border={K} radius={N} borderColor={xt} showText={j} textValue={Lt} textStyle={yt} textColor={tcol} textPos={xs} onTextMove={Ul} textScale={fr} trim={U} speed={E} vol={b} onThumb={r} media={o} /></div><div style={{
+      }} filterCss={Ac} border={K} radius={N} borderColor={xt} texts={txs} selIndex={tIdx} onTextMove={(ii, pp) => updAt(ii, { pos: pp })} onTextSelect={sTsel} trim={U} speed={E} vol={b} onThumb={r} media={o} /></div><div style={{
       background: d.eclipse2,
       borderTop: `1px solid ${d.line}`,
       padding: "13px 16px 6px",
@@ -2063,7 +2107,50 @@ function Editor({
           marginTop: 6
         }}>{ys}</div>}</div>}{n === "text" && <div style={{
         paddingTop: 2
-      }}><button onClick={() => { tcolSnap.current = tcol, Ya(!0); }} style={{
+      }}>{j && <div style={{
+          display: "flex",
+          gap: 6,
+          alignItems: "center",
+          overflowX: "auto",
+          marginBottom: 10,
+          paddingBottom: 2
+        }}>{txs.map((tl, ti) => <button key={tl.id || ti} onClick={() => sTsel(ti)} style={{
+            flex: "0 0 auto",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            height: 28,
+            padding: "0 8px 0 10px",
+            borderRadius: 999,
+            background: ti === tIdx ? d.voltDim : d.card,
+            border: `1px solid ${ti === tIdx ? d.volt : d.line2}`,
+            cursor: "pointer"
+          }}><span style={{
+              fontFamily: L.sans,
+              fontSize: 11,
+              fontWeight: 700,
+              color: d.bone,
+              maxWidth: 68,
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+              textOverflow: "ellipsis"
+            }}>{tl.value || "Text " + (ti + 1)}</span>{ti === tIdx && <span onClick={ev => {
+              ev.stopPropagation(), delLayer(ti);
+            }} style={{
+              display: "flex",
+              alignItems: "center"
+            }}><X size={12} color={d.mutedHi} /></span>}</button>)}{txs.length < 4 && <button onClick={addLayer} style={{
+            flex: "0 0 auto",
+            width: 28,
+            height: 28,
+            borderRadius: 999,
+            background: d.card,
+            border: `1px dashed ${d.line2}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer"
+          }}><Plus size={14} color={d.volt} /></button>}</div>}<button onClick={() => j ? editLayer() : addLayer()} style={{
           width: "100%",
           display: "flex",
           alignItems: "center",
@@ -2285,6 +2372,7 @@ function Editor({
       borderColor: xt,
       radius: N,
       bgImagePath: kc,
+      texts: txs.filter(oo => oo && oo.value && oo.value.trim()),
       text: j ? {
         value: Lt,
         style: yt,
@@ -2296,13 +2384,16 @@ function Editor({
       ctar === "text" && sTcol(pcSnap.current), dr(!1);
     }} onSet={k => {
       ctar === "text" ? sTcol(k) : p(k), dr(!1);
-    }} />}{hs && <TextSheet initialValue={Lt} initialStyle={yt} color={tcol} onColor={sTcol} onCustom={() => { pcSnap.current = tcol, sCtar("text"), dr(!0); }} onCancel={() => { sTcol(tcolSnap.current), Ya(!1); }} onDone={(k, qe) => {
-      ia(k), da(qe), z(!0), Ul(ql => ql || {
-        x: 0.5,
-        y: (1 - (Wt[qe] ? Wt[qe].posY : 0)) / 2
-      }), Ya(!1);
+    }} />}{hs && <TextSheet initialValue={Lt} initialStyle={yt} color={tcol} onColor={sTcol} onCustom={() => { pcSnap.current = tcol, sCtar("text"), dr(!0); }} onCancel={() => {
+      tNew.current ? delLayer(tIdx) : sTcol(tcolSnap.current), tNew.current = !1, Ya(!1);
+    }} onDone={(k, qe) => {
+      updT(oo => ({
+        value: k,
+        style: qe,
+        pos: oo.pos || defPos(qe)
+      })), tNew.current = !1, Ya(!1);
     }} onRemove={j ? () => {
-      z(!1), Ul(null), Ya(!1);
+      delLayer(tIdx), tNew.current = !1, Ya(!1);
     } : null} />}</>;
 }
 function ExportSheet({
@@ -2858,7 +2949,7 @@ function About({
         fontFamily: L.mono,
         fontSize: 9.5,
         color: "rgba(139,135,152,0.6)"
-      }}>{"Reelfit v0.8.3 · Live text colour · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
+      }}>{"Reelfit v0.9.0 · Text layers · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
 }
 function TopBar({
   title: e,
@@ -3443,19 +3534,21 @@ function App() {
             radiusFrac: (C.radius || 0) / 244,
             borderColor: C.borderColor || "#FFFFFF"
           };
-          if (j === "image" && (b.bgImage = C.bgImagePath), C.text && C.text.value) {
-            let ue = Wt[C.text.style] || Wt.Clean,
-              Lt = C.text.pos || {
-                x: 0.5,
-                y: (1 - ue.posY) / 2
+          if (j === "image" && (b.bgImage = C.bgImagePath), C.texts && C.texts.length) {
+            b.texts = C.texts.map(tl => {
+              let ue = Wt[tl.style] || Wt.Clean,
+                pp = tl.pos || {
+                  x: 0.5,
+                  y: (1 - ue.posY) / 2
+                };
+              return {
+                value: tl.value,
+                color: tl.color || ue.color,
+                sizeFrac: 0.045 * ((tl.scale || 100) / 100),
+                posX: pp.x,
+                posY: 1 - 2 * pp.y
               };
-            b.text = {
-              value: C.text.value,
-              color: C.text.color || ue.color,
-              sizeFrac: 0.045 * ((C.text.scale || 100) / 100),
-              posX: Lt.x,
-              posY: 1 - 2 * Lt.y
-            };
+            }), b.text = b.texts[0];
           }
           M.durationMs > 0 && (C.trim[0] > 0 || C.trim[1] < 100) && (b.trimStartMs = Math.round(C.trim[0] / 100 * M.durationMs), b.trimEndMs = Math.round(C.trim[1] / 100 * M.durationMs)), $ = await N.export(b);
         } else $ = await N.pickAndExport({
