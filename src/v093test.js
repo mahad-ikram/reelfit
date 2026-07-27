@@ -33,14 +33,24 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
   });
   await t('picking music calls native pickAudio', async()=>{ tapHas('Add music'); await wait(500); return audioAsked===1; });
   await t('track name + duration shown', ()=> txt().includes('Knockout') && txt().includes('187s'));
-  await t('music volume slider appears', ()=> txt().includes('Music volume'));
-  await t('music volume adjustable', async()=>{
+  await t('track bars show both audio tracks', ()=> txt().includes('Original audio') && txt().includes('Knockout'));
+  await t('selecting Music track switches the slider', async()=>{
+    tap('Knockout'); await wait(350);
+    return txt().includes('Music volume');
+  });
+  await t('music volume adjustable via selected track', async()=>{
     const rng=[...w.document.querySelectorAll('input[type="range"]')];
     const st=Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype,'value').set;
     if(!rng.length) return false;
     st.call(rng[0],'35'); rng[0].dispatchEvent(new w.Event('input',{bubbles:true})); await wait(400);
     return txt().includes('35%');
   });
+  await t('switching back controls original audio', async()=>{
+    tap('Original audio'); await wait(350);
+    if(!txt().includes('Original volume')) return false;
+    return tap('50%') && (await wait(350), txt().includes('50%'));
+  });
+  await t('each track keeps its own level', ()=> txt().includes('35%') && txt().includes('50%'));
   await t('undo removes the music', async()=>{
     const had=txt().includes('Knockout');
     for(let k=0;k<8 && txt().includes('Knockout');k++){ const u=byTitle('Undo'); if(!u) break;

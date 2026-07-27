@@ -17,6 +17,7 @@ import androidx.media3.common.audio.AudioProcessor;
 import androidx.media3.common.audio.ChannelMixingAudioProcessor;
 import androidx.media3.common.audio.ChannelMixingMatrix;
 import androidx.media3.common.audio.SonicAudioProcessor;
+import androidx.media3.common.audio.ToInt16PcmAudioProcessor;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.effect.Presentation;
 import androidx.media3.effect.SpeedChangeEffect;
@@ -344,19 +345,35 @@ public class ReelfitExportPlugin extends Plugin {
             }
         }
 
-        // M6b: real volume 0-100%. create(n,n) is identity; scaleBy applies the gain.
-        if (!removeAudio && volume != 100) {
+        String musicPath = call.getString("musicPath", null);
+        Double mvD = call.getDouble("musicVolume");
+        float musicVol = mvD != null ? mvD.floatValue() : 0.6f;
+        final boolean hasMusic = musicPath != null && musicPath.length() > 0;
+
+        if (!removeAudio && hasMusic) {
+            // Mixing with music: force 16-bit stereo so both sequences match.
+            addStereoGain(aud, Math.max(0f, Math.min(1f, volume / 100f)));
+        } else if (!removeAudio && volume != 100) {
+            // No music: leave the original single-item path exactly as it was.
             float gain = Math.max(0f, Math.min(1f, volume / 100f));
             ChannelMixingAudioProcessor mixer = new ChannelMixingAudioProcessor();
             mixer.putChannelMixingMatrix(ChannelMixingMatrix.create(1, 1).scaleBy(gain));
             mixer.putChannelMixingMatrix(ChannelMixingMatrix.create(2, 2).scaleBy(gain));
             aud.add(mixer);
         }
-
-        String musicPath = call.getString("musicPath", null);
-        Double mvD = call.getDouble("musicVolume");
-        float musicVol = mvD != null ? mvD.floatValue() : 0.6f;
         runTransform(call, mb.build(), fx, aud, removeAudio, musicPath, musicVol);
+    }
+
+    /**
+     * Transformer requires every audio-bearing item in a Composition to output 16-bit PCM with the
+     * same channel count, otherwise the mix is silently dropped. Normalises to stereo at {@code gain}.
+     */
+    private static void addStereoGain(List<AudioProcessor> out, float gain) {
+        out.add(new ToInt16PcmAudioProcessor());
+        ChannelMixingAudioProcessor mixer = new ChannelMixingAudioProcessor();
+        mixer.putChannelMixingMatrix(ChannelMixingMatrix.create(1, 2).scaleBy(gain));
+        mixer.putChannelMixingMatrix(ChannelMixingMatrix.create(2, 2).scaleBy(gain));
+        out.add(mixer);
     }
 
     private void runTransform(final PluginCall call, final MediaItem mediaItem, final List<Effect> videoFx, final List<AudioProcessor> audioFx, final boolean removeAudio) {
@@ -414,12 +431,7 @@ public class ReelfitExportPlugin extends Plugin {
                         // Background music rides in its own audio-only sequence, looped to cover the video.
                         List<AudioProcessor> musicFx = new ArrayList<AudioProcessor>();
                         float mv = Math.max(0f, Math.min(1f, musicVolume));
-                        if (mv < 0.999f) {
-                            ChannelMixingAudioProcessor mixer = new ChannelMixingAudioProcessor();
-                            mixer.putChannelMixingMatrix(ChannelMixingMatrix.create(1, 1).scaleBy(mv));
-                            mixer.putChannelMixingMatrix(ChannelMixingMatrix.create(2, 2).scaleBy(mv));
-                            musicFx.add(mixer);
-                        }
+                        addStereoGain(musicFx, mv);
                         EditedMediaItem musicItem = new EditedMediaItem.Builder(
                                 MediaItem.fromUri(Uri.fromFile(new File(musicPath))))
                                 .setRemoveVideo(true)
@@ -429,7 +441,9 @@ public class ReelfitExportPlugin extends Plugin {
                         EditedMediaItemSequence musicSeq = new EditedMediaItemSequence.Builder(musicItem)
                                 .setIsLooping(true)
                                 .build();
-                        Composition composition = new Composition.Builder(videoSeq, musicSeq).build();
+                        Composition composition = new Composition.Builder(videoSeq, musicSeq)
+                                .experimentalSetForceAudioTrack(true)
+                                .build();
                         transformer.start(composition, outFile.getAbsolutePath());
                     } else {
                         transformer.start(item, outFile.getAbsolutePath());

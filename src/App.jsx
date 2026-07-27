@@ -1636,6 +1636,7 @@ function Editor({
     [mName, sMName] = useState(""),
     [mDur, sMDur] = useState(0),
     [mVol, sMVol] = useState(60),
+    [aSel, sASel] = useState("orig"),
     pickMusic = () => {
       let P = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ReelfitExport;
       if (!P || !P.pickAudio) {
@@ -2191,23 +2192,76 @@ function Editor({
             background: d.volt,
             borderRadius: 4,
             padding: "1px 3px"
-          }}>{"SOON"}</span></button></div>{mPath && <div style={{
-          marginBottom: 4
-        }}><Slider label="Music volume" min={0} max={100} value={mVol} onChange={sMVol} valLabel={mVol + "%"} /></div>}<div style={{
-          fontFamily: L.sans,
-          fontSize: 11,
-          fontWeight: 600,
-          color: d.mutedHi,
-          marginBottom: 7
-        }}>{"Original audio"}</div><Slider label="Volume" min={0} max={100} value={b} onChange={ue} valLabel={b === 0 ? "Muted" : b + "%"} /><div style={{
+          }}>{"SOON"}</span></button></div><div style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+          marginBottom: 10
+        }}>{[{
+          k: "orig",
+          l: "Original audio",
+          v: b,
+          Ic0: Volume2
+        }].concat(mPath ? [{
+          k: "music",
+          l: mName || "Music track",
+          v: mVol,
+          Ic0: Music
+        }] : []).map(tr => {
+          let on = aSel === tr.k,
+            Ic1 = tr.Ic0;
+          return <button key={tr.k} onClick={() => sASel(tr.k)} style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            gap: 9,
+            background: on ? d.voltDim : d.card,
+            border: `1px solid ${on ? d.volt : d.line}`,
+            borderRadius: 10,
+            padding: "8px 10px",
+            cursor: "pointer",
+            textAlign: "left"
+          }}><Ic1 size={14} color={on ? d.volt : d.mutedHi} /><span style={{
+              width: 74,
+              flex: "0 0 auto",
+              fontFamily: L.sans,
+              fontSize: 11.5,
+              fontWeight: 700,
+              color: on ? d.bone : d.mutedHi,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis"
+            }}>{tr.l}</span><span style={{
+              flex: 1,
+              height: 16,
+              borderRadius: 4,
+              background: "rgba(255,255,255,0.05)",
+              position: "relative",
+              overflow: "hidden"
+            }}><span style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: tr.v + "%",
+                background: on ? `linear-gradient(90deg, ${d.volt}, ${d.voltSoft})` : "rgba(139,135,152,0.35)"
+              }} /></span><span style={{
+              width: 34,
+              textAlign: "right",
+              flex: "0 0 auto",
+              fontFamily: L.mono,
+              fontSize: 10,
+              color: on ? d.bone : d.muted
+            }}>{tr.v + "%"}</span></button>;
+        })}</div><Slider label={aSel === "music" ? "Music volume" : "Original volume"} min={0} max={100} value={aSel === "music" ? mVol : b} onChange={aSel === "music" ? sMVol : ue} valLabel={(aSel === "music" ? mVol : b) + "%"} /><div style={{
           display: "flex",
           gap: 7,
           marginBottom: 8
-        }}><Pill small={!0} active={b === 0} onClick={() => ue(0)}>{"Mute"}</Pill><Pill small={!0} active={b === 50} onClick={() => ue(50)}>{"50%"}</Pill><Pill small={!0} active={b === 100} onClick={() => ue(100)}>{"100%"}</Pill></div>{b === 0 && <div style={{
+        }}><Pill small={!0} active={(aSel === "music" ? mVol : b) === 0} onClick={() => aSel === "music" ? sMVol(0) : ue(0)}>{"Mute"}</Pill><Pill small={!0} active={(aSel === "music" ? mVol : b) === 50} onClick={() => aSel === "music" ? sMVol(50) : ue(50)}>{"50%"}</Pill><Pill small={!0} active={(aSel === "music" ? mVol : b) === 100} onClick={() => aSel === "music" ? sMVol(100) : ue(100)}>{"100%"}</Pill></div>{b === 0 && !mPath && <div style={{
           fontFamily: L.sans,
           fontSize: 11,
           color: d.muted
-        }}>{"Export will have no sound."}</div>}{ys && <div style={{
+        }}>}}>{"Export will have no sound."}</div>}{ys && <div style={{
           fontFamily: L.sans,
           fontSize: 11,
           color: d.volt,
@@ -3084,7 +3138,7 @@ function About({
         fontFamily: L.mono,
         fontSize: 9.5,
         color: "rgba(139,135,152,0.6)"
-      }}>{"Reelfit v0.9.3 · Background music · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
+      }}>{"Reelfit v0.9.4 · Audio mix · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
 }
 function TopBar({
   title: e,
