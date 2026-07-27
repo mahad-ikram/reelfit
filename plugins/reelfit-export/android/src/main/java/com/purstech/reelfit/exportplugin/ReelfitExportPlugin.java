@@ -387,6 +387,10 @@ public class ReelfitExportPlugin extends Plugin {
         getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                final boolean musicGiven = musicPath != null && musicPath.length() > 0;
+                final boolean musicOnDisk = musicGiven && new File(musicPath).exists();
+                final long musicBytes = musicOnDisk ? new File(musicPath).length() : -1L;
+                final boolean useMusic = musicOnDisk && musicBytes > 0L;
                 try {
                     Effects effects = new Effects(
                             audioFx,
@@ -409,6 +413,11 @@ public class ReelfitExportPlugin extends Plugin {
                                     }
                                     JSObject ret = new JSObject();
                                     ret.put("saved", saved);
+                                    ret.put("mixMode", useMusic ? "composition" : "single");
+                                    ret.put("musicGiven", musicGiven);
+                                    ret.put("musicOnDisk", musicOnDisk);
+                                    ret.put("musicBytes", musicBytes);
+                                    ret.put("musicVolume", musicVolume);
                                     ret.put("durationMs", System.currentTimeMillis() - exportStartMs);
                                     ret.put("uri", lastSavedUri != null ? lastSavedUri.toString() : "");
                                     call.resolve(ret);
@@ -419,7 +428,9 @@ public class ReelfitExportPlugin extends Plugin {
                                                     ExportException exportException) {
                                     stopProgress();
                                     outFile.delete();
-                                    call.reject("Export failed: " + exportException.getMessage());
+                                    call.reject((useMusic ? "Export failed while mixing music: " : "Export failed: ")
+                                            + exportException.getMessage()
+                                            + " [" + exportException.errorCode + "]");
                                 }
                             })
                             .build();
@@ -427,7 +438,7 @@ public class ReelfitExportPlugin extends Plugin {
                     activeTransformer = transformer;
                     exportStartMs = System.currentTimeMillis();
 
-                    if (musicPath != null && musicPath.length() > 0 && new File(musicPath).exists()) {
+                    if (useMusic) {
                         // Background music rides in its own audio-only sequence, looped to cover the video.
                         List<AudioProcessor> musicFx = new ArrayList<AudioProcessor>();
                         float mv = Math.max(0f, Math.min(1f, musicVolume));

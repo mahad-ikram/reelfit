@@ -2793,7 +2793,18 @@ function Success({
         fontSize: 19,
         color: d.bone,
         marginBottom: 5
-      }}>{"Ready to post"}</div><div style={{
+      }}>{"Ready to post"}</div>{t && t.musicGiven && <div style={{
+        fontFamily: L.mono,
+        fontSize: 10,
+        lineHeight: 1.5,
+        color: t.mixMode === "composition" ? d.mutedHi : "#FF8B6B",
+        background: "rgba(255,255,255,0.05)",
+        border: `1px solid ${d.line}`,
+        borderRadius: 8,
+        padding: "7px 9px",
+        marginTop: 10,
+        textAlign: "center"
+      }}>{"music: " + (t.mixMode || "?") + " \u00B7 file " + (t.musicOnDisk ? "ok" : "MISSING") + " \u00B7 " + (t.musicBytes > 0 ? Math.round(t.musicBytes / 1024) + "kb" : "0kb") + " \u00B7 vol " + Math.round((t.musicVolume == null ? 0 : t.musicVolume) * 100) + "%"}</div>}<div style={{
         fontFamily: L.sans,
         fontSize: 12.5,
         color: d.muted,
@@ -3138,7 +3149,7 @@ function About({
         fontFamily: L.mono,
         fontSize: 9.5,
         color: "rgba(139,135,152,0.6)"
-      }}>{"Reelfit v0.9.4 · Audio mix · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
+      }}>{"Reelfit v0.9.5 · Audio mix diagnostics · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
 }
 function TopBar({
   title: e,
