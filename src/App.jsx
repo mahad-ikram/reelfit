@@ -1630,7 +1630,64 @@ function Editor({
     [ys, Is] = useState(""),
     Ka = o && o.durationMs ? o.durationMs / 1e3 : 15,
     Nl = k => Math.floor(k / 60) + ":" + String(Math.round(k % 60)).padStart(2, "0"),
-    [vs, Hl] = useState(!1);
+    [vs, Hl] = useState(!1),
+    [hv, sHv] = useState(0),
+    hist = useRef({
+      past: [],
+      future: [],
+      applying: !1,
+      tmr: null
+    }),
+    snapNow = () => ({
+      i,
+      g,
+      x,
+      S,
+      M,
+      c,
+      y,
+      w,
+      T,
+      E,
+      K,
+      xt,
+      N,
+      U,
+      b,
+      kc,
+      tsel,
+      txs
+    }),
+    applySnap = ss => {
+      hist.current.applying = !0;
+      f(ss.i), h(ss.g), I(ss.x), A(ss.S), p(ss.M), m(ss.c), F(ss.y), B(ss.w), q(ss.T), oe(ss.E), Te(ss.K), C(ss.xt), te(ss.N), $(ss.U), ue(ss.b), wc(ss.kc), sTxs(ss.txs), sTsel(ss.tsel), sHv(v => v + 1);
+    },
+    canUndo = hist.current.past.length > 1,
+    canRedo = hist.current.future.length > 0,
+    undoEdit = () => {
+      let h0 = hist.current;
+      h0.past.length < 2 || (h0.future.push(h0.past.pop()), applySnap(h0.past[h0.past.length - 1]));
+    },
+    redoEdit = () => {
+      let h0 = hist.current;
+      if (!h0.future.length) return;
+      let ss = h0.future.pop();
+      h0.past.push(ss), applySnap(ss);
+    };
+  useEffect(() => {
+    let h0 = hist.current;
+    if (h0.applying) {
+      h0.applying = !1;
+      return;
+    }
+    // debounce so a slider drag collapses into one history entry
+    h0.tmr = setTimeout(() => {
+      let ss = snapNow(),
+        js = JSON.stringify(ss);
+      h0.past.length && JSON.stringify(h0.past[h0.past.length - 1]) === js || (h0.past.push(ss), h0.past.length > 40 && h0.past.shift(), h0.future = [], sHv(v => v + 1));
+    }, 340);
+    return () => clearTimeout(h0.tmr);
+  }, [i, g, x, S, M, c, y, w, T, E, K, xt, N, U, b, kc, tsel, txs]);
   Ls.current = {
     colorSheet: gs,
     textSheet: hs,
@@ -1716,7 +1773,19 @@ function Editor({
       display: "flex",
       gap: 8,
       alignItems: "center"
-    }}><button onClick={() => {
+    }}><button onClick={undoEdit} title="Undo" style={{
+        background: "none",
+        border: "none",
+        cursor: canUndo ? "pointer" : "default",
+        padding: 2,
+        opacity: canUndo ? 1 : 0.3
+      }}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={canUndo ? d.bone : d.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" /></svg></button><button onClick={redoEdit} title="Redo" style={{
+        background: "none",
+        border: "none",
+        cursor: canRedo ? "pointer" : "default",
+        padding: 2,
+        opacity: canRedo ? 1 : 0.3
+      }}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={canRedo ? d.bone : d.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14l5-5-5-5" /><path d="M20 9H10a6 6 0 0 0 0 12h3" /></svg></button><button onClick={() => {
         B({
           b: 100,
           c: 100,
@@ -2975,7 +3044,7 @@ function About({
         fontFamily: L.mono,
         fontSize: 9.5,
         color: "rgba(139,135,152,0.6)"
-      }}>{"Reelfit v0.9.1 · Border colours · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
+      }}>{"Reelfit v0.9.2 · Undo / redo · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
 }
 function TopBar({
   title: e,
