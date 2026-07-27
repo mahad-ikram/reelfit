@@ -2241,17 +2241,39 @@ function Editor({
         paddingTop: 2
       }}><Slider label="Border width" min={0} max={14} value={K} onChange={Te} valLabel={K + "px"} /><Slider label="Corner radius" min={0} max={28} value={N} onChange={te} valLabel={N + "px"} /><div style={{
           display: "flex",
+          overflowX: "auto",
+          paddingBottom: 2,
           gap: 8
-        }}>{["#FFFFFF", "#0A0A14", d.volt, "#F5A623", "#15B79E"].map(k => <button onClick={() => {
+        }}>{["#FFFFFF", "#0A0A14"].concat(lg).map(k => <button onClick={() => {
             C(k), K === 0 && Te(4);
           }} style={{
+            flex: "0 0 auto",
             width: 26,
             height: 26,
             borderRadius: 999,
             background: k,
             cursor: "pointer",
+            padding: 0,
             border: xt === k ? `2px solid ${d.volt}` : `1px solid ${d.line2}`
-          }} key={k} />)}</div></div>}{n === "captions" && <div style={{
+          }} key={k} />)}<button onClick={() => {
+            pcSnap.current = xt, sCtar("border"), K === 0 && Te(4), dr(!0);
+          }} style={{
+            flex: "0 0 auto",
+            width: 26,
+            height: 26,
+            borderRadius: 999,
+            padding: 0,
+            background: "conic-gradient(from 0deg, #FF3B3B, #FFD23F, #3DDC97, #22C3D6, #4C6EF5, #A855F7, #FF5CA8, #FF3B3B)",
+            border: ["#FFFFFF", "#0A0A14"].concat(lg).indexOf(xt) === -1 ? `2px solid ${d.bone}` : `1px solid ${d.line2}`,
+            cursor: "pointer",
+            position: "relative"
+          }}><span style={{
+              position: "absolute",
+              inset: 6,
+              borderRadius: "50%",
+              background: ["#FFFFFF", "#0A0A14"].concat(lg).indexOf(xt) === -1 ? xt : d.eclipse,
+              border: "1px solid rgba(255,255,255,0.35)"
+            }} /></button></div></div>}{n === "captions" && <div style={{
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -2380,10 +2402,14 @@ function Editor({
         pos: xs,
         scale: fr
       } : null
-    })} />}{gs && <ColorSheet initial={ctar === "text" ? tcol || "#FFFFFF" : M} title={ctar === "text" ? "Text colour" : "Background colour"} soft={ctar === "text"} onLive={ctar === "text" ? sTcol : null} onCancel={() => {
-      ctar === "text" && sTcol(pcSnap.current), dr(!1);
+    })} />}{gs && <ColorSheet initial={ctar === "text" ? tcol || "#FFFFFF" : ctar === "border" ? xt : M} title={ctar === "text" ? "Text colour" : ctar === "border" ? "Border colour" : "Background colour"} soft={ctar !== "bg"} onLive={ctar === "text" ? sTcol : ctar === "border" ? C : null} onCancel={() => {
+      if (ctar === "text") sTcol(pcSnap.current);else if (ctar === "border") C(pcSnap.current);
+      dr(!1);
     }} onSet={k => {
-      ctar === "text" ? sTcol(k) : p(k), dr(!1);
+      if (ctar === "text") sTcol(k);else if (ctar === "border") {
+        C(k), K === 0 && Te(4);
+      } else p(k);
+      dr(!1);
     }} />}{hs && <TextSheet initialValue={Lt} initialStyle={yt} color={tcol} onColor={sTcol} onCustom={() => { pcSnap.current = tcol, sCtar("text"), dr(!0); }} onCancel={() => {
       tNew.current ? delLayer(tIdx) : sTcol(tcolSnap.current), tNew.current = !1, Ya(!1);
     }} onDone={(k, qe) => {
@@ -2949,7 +2975,7 @@ function About({
         fontFamily: L.mono,
         fontSize: 9.5,
         color: "rgba(139,135,152,0.6)"
-      }}>{"Reelfit v0.9.0 · Text layers · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
+      }}>{"Reelfit v0.9.1 · Border colours · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
 }
 function TopBar({
   title: e,
