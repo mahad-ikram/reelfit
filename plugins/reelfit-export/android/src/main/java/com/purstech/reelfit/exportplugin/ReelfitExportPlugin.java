@@ -22,6 +22,7 @@ import androidx.media3.effect.Presentation;
 import androidx.media3.effect.SpeedChangeEffect;
 import androidx.media3.transformer.Composition;
 import androidx.media3.transformer.EditedMediaItem;
+import androidx.media3.transformer.EditedMediaItemSequence;
 import androidx.media3.transformer.Effects;
 import androidx.media3.transformer.ExportException;
 import androidx.media3.transformer.ExportResult;
@@ -87,6 +88,93 @@ public class ReelfitExportPlugin extends Plugin {
     }
 
     // ---------- v2 API: pick() then export() ----------
+
+    @PluginMethod
+    public void pickAudio(PluginCall call) {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("audio/*");
+        startActivityForResult(call, intent, "onAudioPicked");
+    }
+
+    @ActivityCallback
+    private void onAudioPicked(final PluginCall call, ActivityResult result) {
+        if (call == null) return;
+        if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null
+                || result.getData().getData() == null) {
+            call.reject("Cancelled");
+            return;
+        }
+        final Uri uri = result.getData().getData();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                InputStream in = null;
+                OutputStream out = null;
+                try {
+                    File dir = getContext().getCacheDir();
+                    File[] old = dir.listFiles();
+                    if (old != null) {
+                        for (File f : old) {
+                            if (f.getName().startsWith("reelfit_music_")) f.delete();
+                        }
+                    }
+                    String name = queryDisplayName(uri);
+                    String ext = "m4a";
+                    if (name != null) {
+                        int dot = name.lastIndexOf('.');
+                        if (dot > 0 && dot < name.length() - 1) ext = name.substring(dot + 1);
+                    }
+                    File dst = new File(dir, "reelfit_music_" + System.currentTimeMillis() + "." + ext);
+                    in = getContext().getContentResolver().openInputStream(uri);
+                    out = new FileOutputStream(dst);
+                    byte[] buf = new byte[65536];
+                    int n;
+                    while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                    out.flush();
+
+                    long durMs = 0L;
+                    MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                    try {
+                        mmr.setDataSource(dst.getAbsolutePath());
+                        String dv = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                        if (dv != null) durMs = Long.parseLong(dv);
+                        String title = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
+                        if (title != null && title.trim().length() > 0) name = title.trim();
+                    } catch (Exception ignored) {
+                    } finally {
+                        try { mmr.release(); } catch (Exception ignored) {}
+                    }
+
+                    final JSObject ret = new JSObject();
+                    ret.put("path", dst.getAbsolutePath());
+                    ret.put("durationMs", durMs);
+                    ret.put("name", name != null ? name : "Audio track");
+                    call.resolve(ret);
+                } catch (Exception e) {
+                    call.reject("Could not read that audio file: " + e.getMessage());
+                } finally {
+                    try { if (in != null) in.close(); } catch (Exception ignored) {}
+                    try { if (out != null) out.close(); } catch (Exception ignored) {}
+                }
+            }
+        }).start();
+    }
+
+    private String queryDisplayName(Uri uri) {
+        android.database.Cursor c = null;
+        try {
+            c = getContext().getContentResolver().query(uri, null, null, null, null);
+            if (c != null && c.moveToFirst()) {
+                int idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                if (idx >= 0) return c.getString(idx);
+            }
+        } catch (Exception ignored) {
+        } finally {
+            try { if (c != null) c.close(); } catch (Exception ignored) {}
+        }
+        return null;
+    }
 
     @PluginMethod
     public void pick(PluginCall call) {
@@ -265,10 +353,17 @@ public class ReelfitExportPlugin extends Plugin {
             aud.add(mixer);
         }
 
-        runTransform(call, mb.build(), fx, aud, removeAudio);
+        String musicPath = call.getString("musicPath", null);
+        Double mvD = call.getDouble("musicVolume");
+        float musicVol = mvD != null ? mvD.floatValue() : 0.6f;
+        runTransform(call, mb.build(), fx, aud, removeAudio, musicPath, musicVol);
     }
 
     private void runTransform(final PluginCall call, final MediaItem mediaItem, final List<Effect> videoFx, final List<AudioProcessor> audioFx, final boolean removeAudio) {
+        runTransform(call, mediaItem, videoFx, audioFx, removeAudio, null, 1f);
+    }
+
+    private void runTransform(final PluginCall call, final MediaItem mediaItem, final List<Effect> videoFx, final List<AudioProcessor> audioFx, final boolean removeAudio, final String musicPath, final float musicVolume) {
         final File outFile = new File(getContext().getCacheDir(),
                 "reelfit_" + System.currentTimeMillis() + ".mp4");
 
@@ -314,7 +409,31 @@ public class ReelfitExportPlugin extends Plugin {
 
                     activeTransformer = transformer;
                     exportStartMs = System.currentTimeMillis();
-                    transformer.start(item, outFile.getAbsolutePath());
+
+                    if (musicPath != null && musicPath.length() > 0 && new File(musicPath).exists()) {
+                        // Background music rides in its own audio-only sequence, looped to cover the video.
+                        List<AudioProcessor> musicFx = new ArrayList<AudioProcessor>();
+                        float mv = Math.max(0f, Math.min(1f, musicVolume));
+                        if (mv < 0.999f) {
+                            ChannelMixingAudioProcessor mixer = new ChannelMixingAudioProcessor();
+                            mixer.putChannelMixingMatrix(ChannelMixingMatrix.create(1, 1).scaleBy(mv));
+                            mixer.putChannelMixingMatrix(ChannelMixingMatrix.create(2, 2).scaleBy(mv));
+                            musicFx.add(mixer);
+                        }
+                        EditedMediaItem musicItem = new EditedMediaItem.Builder(
+                                MediaItem.fromUri(Uri.fromFile(new File(musicPath))))
+                                .setRemoveVideo(true)
+                                .setEffects(new Effects(musicFx, new ArrayList<Effect>()))
+                                .build();
+                        EditedMediaItemSequence videoSeq = new EditedMediaItemSequence.Builder(item).build();
+                        EditedMediaItemSequence musicSeq = new EditedMediaItemSequence.Builder(musicItem)
+                                .setIsLooping(true)
+                                .build();
+                        Composition composition = new Composition.Builder(videoSeq, musicSeq).build();
+                        transformer.start(composition, outFile.getAbsolutePath());
+                    } else {
+                        transformer.start(item, outFile.getAbsolutePath());
+                    }
                     startProgress();
                 } catch (Exception e) {
                     call.reject("Could not start export: " + e.getMessage());

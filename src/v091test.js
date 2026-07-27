@@ -53,6 +53,7 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
     return captured && /^#[0-9A-Fa-f]{6}$/.test(captured.borderColor||'');
   });
   await t('background colour untouched by border picking', ()=> captured && captured.bgColor==='#6C3AFF');
+  await t('no music -> payload omits musicPath', ()=> captured && captured.musicPath===undefined);
   console.log('  '+'-'.repeat(48)); console.log(`  PASSED: ${pass}   FAILED: ${fail}`);
   if(errs.length) console.log('  ERRORS:\n    '+[...new Set(errs)].join('\n    '));
   if(captured) console.log(`  payload: borderColor=${captured.borderColor} borderWidth=${captured.borderFrac!==undefined?'set':'-'} bgColor=${captured.bgColor}`);
