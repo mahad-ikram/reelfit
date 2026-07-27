@@ -3149,7 +3149,7 @@ function About({
         fontFamily: L.mono,
         fontSize: 9.5,
         color: "rgba(139,135,152,0.6)"
-      }}>{"Reelfit v0.9.5 · Audio mix diagnostics · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
+      }}>{"Reelfit v0.9.6 · Music mix fix · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
 }
 function TopBar({
   title: e,
@@ -3734,7 +3734,7 @@ function App() {
             radiusFrac: (C.radius || 0) / 244,
             borderColor: C.borderColor || "#FFFFFF"
           };
-          if (C.musicPath && (b.musicPath = C.musicPath, b.musicVolume = C.musicVolume == null ? 0.6 : C.musicVolume), j === "image" && (b.bgImage = C.bgImagePath), C.texts && C.texts.length) {
+          if (C.musicPath && (b.musicPath = C.musicPath, b.musicVolume = C.musicVolume == null ? 0.6 : C.musicVolume, b.musicClipMs = Math.max(500, Math.round((M.durationMs || 0) * ((C.trim && C.trim[1] != null ? C.trim[1] : 100) - (C.trim && C.trim[0] != null ? C.trim[0] : 0)) / 100 / (C.speed || 1)))), j === "image" && (b.bgImage = C.bgImagePath), C.texts && C.texts.length) {
             b.texts = C.texts.map(tl => {
               let ue = Wt[tl.style] || Wt.Clean,
                 pp = tl.pos || {

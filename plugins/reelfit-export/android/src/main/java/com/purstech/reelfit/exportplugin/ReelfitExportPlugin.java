@@ -361,7 +361,9 @@ public class ReelfitExportPlugin extends Plugin {
             mixer.putChannelMixingMatrix(ChannelMixingMatrix.create(2, 2).scaleBy(gain));
             aud.add(mixer);
         }
-        runTransform(call, mb.build(), fx, aud, removeAudio, musicPath, musicVol);
+        Double clipD = call.getDouble("musicClipMs");
+        long musicClipMs = clipD != null ? (long) clipD.doubleValue() : 0L;
+        runTransform(call, mb.build(), fx, aud, removeAudio, musicPath, musicVol, musicClipMs);
     }
 
     /**
@@ -377,10 +379,10 @@ public class ReelfitExportPlugin extends Plugin {
     }
 
     private void runTransform(final PluginCall call, final MediaItem mediaItem, final List<Effect> videoFx, final List<AudioProcessor> audioFx, final boolean removeAudio) {
-        runTransform(call, mediaItem, videoFx, audioFx, removeAudio, null, 1f);
+        runTransform(call, mediaItem, videoFx, audioFx, removeAudio, null, 1f, 0L);
     }
 
-    private void runTransform(final PluginCall call, final MediaItem mediaItem, final List<Effect> videoFx, final List<AudioProcessor> audioFx, final boolean removeAudio, final String musicPath, final float musicVolume) {
+    private void runTransform(final PluginCall call, final MediaItem mediaItem, final List<Effect> videoFx, final List<AudioProcessor> audioFx, final boolean removeAudio, final String musicPath, final float musicVolume, final long musicClipMs) {
         final File outFile = new File(getContext().getCacheDir(),
                 "reelfit_" + System.currentTimeMillis() + ".mp4");
 
@@ -439,23 +441,46 @@ public class ReelfitExportPlugin extends Plugin {
                     exportStartMs = System.currentTimeMillis();
 
                     if (useMusic) {
-                        // Background music rides in its own audio-only sequence, looped to cover the video.
+                        // Mirrors Media3's own background-audio sample: clip the track to the
+                        // video length and give the item an explicit duration. No looping, and
+                        // no setRemoveVideo (the file is already audio-only).
                         List<AudioProcessor> musicFx = new ArrayList<AudioProcessor>();
                         float mv = Math.max(0f, Math.min(1f, musicVolume));
                         addStereoGain(musicFx, mv);
-                        EditedMediaItem musicItem = new EditedMediaItem.Builder(
-                                MediaItem.fromUri(Uri.fromFile(new File(musicPath))))
-                                .setRemoveVideo(true)
+
+                        long musicDurUs = 0L;
+                        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                        try {
+                            mmr.setDataSource(musicPath);
+                            String dv = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                            if (dv != null) musicDurUs = Long.parseLong(dv) * 1000L;
+                        } catch (Exception ignored) {
+                        } finally {
+                            try { mmr.release(); } catch (Exception ignored) {}
+                        }
+                        if (musicDurUs <= 0L) musicDurUs = 60_000_000L;
+
+                        long clipMs = musicClipMs > 0L ? musicClipMs : (musicDurUs / 1000L);
+                        if (clipMs > musicDurUs / 1000L) clipMs = musicDurUs / 1000L;
+
+                        MediaItem musicMedia = new MediaItem.Builder()
+                                .setUri(Uri.fromFile(new File(musicPath)))
+                                .setClippingConfiguration(
+                                        new MediaItem.ClippingConfiguration.Builder()
+                                                .setStartPositionMs(0)
+                                                .setEndPositionMs(clipMs)
+                                                .build())
+                                .build();
+                        EditedMediaItem musicItem = new EditedMediaItem.Builder(musicMedia)
                                 .setEffects(new Effects(musicFx, new ArrayList<Effect>()))
+                                .setDurationUs(musicDurUs)
                                 .build();
+
                         EditedMediaItemSequence videoSeq = new EditedMediaItemSequence.Builder(item).build();
-                        EditedMediaItemSequence musicSeq = new EditedMediaItemSequence.Builder(musicItem)
-                                .setIsLooping(true)
-                                .build();
-                        Composition composition = new Composition.Builder(videoSeq, musicSeq)
-                                .experimentalSetForceAudioTrack(true)
-                                .build();
-                        transformer.start(composition, outFile.getAbsolutePath());
+                        EditedMediaItemSequence musicSeq = new EditedMediaItemSequence.Builder(musicItem).build();
+                        Composition.Builder cb = new Composition.Builder(videoSeq, musicSeq);
+                        if (removeAudio) cb.experimentalSetForceAudioTrack(true);
+                        transformer.start(cb.build(), outFile.getAbsolutePath());
                     } else {
                         transformer.start(item, outFile.getAbsolutePath());
                     }

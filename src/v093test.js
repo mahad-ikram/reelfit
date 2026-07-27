@@ -74,7 +74,9 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
     const b=all().filter(x=>x.tagName==='BUTTON'&&(x.textContent||'').includes('Export 1080p'));
     if(b.length) b[b.length-1].dispatchEvent(new w.MouseEvent('click',{bubbles:true}));
     await wait(1000);
-    return captured && captured.musicPath==='/music/track.mp3' && captured.musicVolume>0 && captured.musicVolume<=1;
+    if(!captured) return false;
+    const okClip = typeof captured.musicClipMs==='number' && captured.musicClipMs>500 && captured.musicClipMs<=15000;
+    return captured.musicPath==='/music/track.mp3' && captured.musicVolume>0 && captured.musicVolume<=1 && okClip;
   });
   console.log('  '+'-'.repeat(48)); console.log(`  PASSED: ${pass}   FAILED: ${fail}`);
   if(errs.length) console.log('  ERRORS:\n    '+[...new Set(errs)].join('\n    '));
