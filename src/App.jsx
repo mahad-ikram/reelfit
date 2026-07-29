@@ -2795,17 +2795,20 @@ function Success({
         marginBottom: 5
       }}>{"Ready to post"}</div>{t && t.musicGiven && <div style={{
         fontFamily: L.mono,
-        fontSize: 10,
-        lineHeight: 1.5,
-        color: t.mixMode === "composition" ? d.mutedHi : "#FF8B6B",
-        background: "rgba(255,255,255,0.05)",
-        border: `1px solid ${d.line}`,
-        borderRadius: 8,
-        padding: "7px 9px",
-        marginTop: 10,
-        textAlign: "center",
-        whiteSpace: "pre-line"
-      }}>{"mix " + (t.mixMode || "?") + " \u00B7 file " + (t.musicOnDisk ? "ok" : "MISSING") + " \u00B7 audio " + (t.audioProcess || "?") + "\n" + "clip " + (t.clipMs == null ? "?" : t.clipMs) + "ms \u00B7 out " + (t.outDurationMs == null ? "?" : t.outDurationMs) + "ms \u00B7 " + (t.channelCount == null ? "?" : t.channelCount) + "ch " + (t.sampleRate == null ? "?" : t.sampleRate) + "Hz"}</div>}<div style={{
+        fontSize: 12,
+        fontWeight: 700,
+        lineHeight: 1.65,
+        color: "#0A0A14",
+        background: t.audioProcess === "transcoded" || t.audioProcess === "mixed" ? "#3DDC97" : "#FFD23F",
+        border: "2px solid #fff",
+        borderRadius: 12,
+        padding: "12px 14px",
+        marginTop: 14,
+        width: "100%",
+        textAlign: "left",
+        whiteSpace: "pre",
+        overflowX: "auto"
+      }}>{"MUSIC DIAGNOSTIC\n" + "mix        " + (t.mixMode || "?") + "\n" + "file       " + (t.musicOnDisk ? "ok " + (t.musicBytes > 0 ? Math.round(t.musicBytes / 1024) + "kb" : "0kb") : "MISSING") + "\n" + "volume     " + Math.round((t.musicVolume == null ? 0 : t.musicVolume) * 100) + "%\n" + "clip used  " + (t.clipMs == null ? "?" : t.clipMs) + "ms\n" + "out length " + (t.outDurationMs == null ? "?" : t.outDurationMs) + "ms\n" + "audio      " + (t.audioProcess || "?") + "\n" + "channels   " + (t.channelCount == null ? "?" : t.channelCount) + "    rate " + (t.sampleRate == null ? "?" : t.sampleRate) + "\n" + "bitrate    " + (t.audioBitrate == null ? "?" : t.audioBitrate)}</div>}<div style={{
         fontFamily: L.sans,
         fontSize: 12.5,
         color: d.muted,
@@ -3150,7 +3153,7 @@ function About({
         fontFamily: L.mono,
         fontSize: 9.5,
         color: "rgba(139,135,152,0.6)"
-      }}>{"Reelfit v0.9.8 · Music diagnostic · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
+      }}>{"Reelfit v0.9.9 · Music diagnostic · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
 }
 function TopBar({
   title: e,
