@@ -599,6 +599,9 @@ function Preview({
   borderColor: h,
   texts: TX,
   selIndex: SI,
+  musicSrc: MSRC,
+  musicVol: MVOL,
+  musicStart: MSTART,
   onTextMove: M,
   onTextSelect: OS,
   trim: c,
@@ -621,6 +624,7 @@ function Preview({
     C = t === "blur" || t === "glow",
     N = `brightness(${s.b}) contrast(${s.c}) saturate(${s.s}) ${i}`,
     te = useRef(null),
+    mAud = useRef(null),
     j = useRef(!1);
   return <div ref={te} style={{
     width: q,
@@ -680,6 +684,14 @@ function Preview({
           let U = parseFloat(z.dataset.ts),
             $ = parseFloat(z.dataset.te);
           (z.currentTime < U - 0.25 || z.currentTime > $) && (z.currentTime = U);
+          let ae = mAud.current;
+          if (ae && MSRC) {
+            ae.volume = Math.max(0, Math.min(1, (MVOL == null ? 60 : MVOL) / 100));
+            let want = (MSTART || 0) / 1e3 + (z.currentTime - U);
+            ae.duration && want > ae.duration && (want %= ae.duration);
+            Math.abs(ae.currentTime - want) > 0.35 && (ae.currentTime = Math.max(0, want));
+            z.paused ? ae.paused || ae.pause() : ae.paused && ae.play().catch(() => {});
+          }
         }), z.addEventListener("loadeddata", () => {
           try {
             if (F && !z._thumbed) {
@@ -700,7 +712,9 @@ function Preview({
         display: "flex",
         alignItems: "center",
         justifyContent: "center"
-      }}><Play size={15} color="#fff" fill="#fff" /></div>}</div><div style={{
+      }}><Play size={15} color="#fff" fill="#fff" /></div>}{MSRC && <audio ref={mAud} src={MSRC} loop={!0} preload="auto" style={{
+        display: "none"
+      }} />}</div><div style={{
       position: "absolute",
       right: 7,
       bottom: 7,
@@ -1637,6 +1651,7 @@ function Editor({
     [mDur, sMDur] = useState(0),
     [mVol, sMVol] = useState(60),
     [aSel, sASel] = useState("orig"),
+    [mStart, sMStart] = useState(0),
     pickMusic = () => {
       let P = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ReelfitExport;
       if (!P || !P.pickAudio) {
@@ -1644,7 +1659,7 @@ function Editor({
         return;
       }
       P.pickAudio().then(r => {
-        r && r.path && (sMPath(r.path), sMName(r.name || "Music track"), sMDur(r.durationMs || 0));
+        r && r.path && (sMPath(r.path), sMName(r.name || "Music track"), sMDur(r.durationMs || 0), sMStart(0));
       }).catch(() => {});
     },
     hist = useRef({
@@ -1675,11 +1690,12 @@ function Editor({
       mPath,
       mName,
       mDur,
-      mVol
+      mVol,
+      mStart
     }),
     applySnap = ss => {
       hist.current.applying = !0;
-      f(ss.i), h(ss.g), I(ss.x), A(ss.S), p(ss.M), m(ss.c), F(ss.y), B(ss.w), q(ss.T), oe(ss.E), Te(ss.K), C(ss.xt), te(ss.N), $(ss.U), ue(ss.b), wc(ss.kc), sTxs(ss.txs), sTsel(ss.tsel), sMPath(ss.mPath), sMName(ss.mName), sMDur(ss.mDur), sMVol(ss.mVol), sHv(v => v + 1);
+      f(ss.i), h(ss.g), I(ss.x), A(ss.S), p(ss.M), m(ss.c), F(ss.y), B(ss.w), q(ss.T), oe(ss.E), Te(ss.K), C(ss.xt), te(ss.N), $(ss.U), ue(ss.b), wc(ss.kc), sTxs(ss.txs), sTsel(ss.tsel), sMPath(ss.mPath), sMName(ss.mName), sMDur(ss.mDur), sMVol(ss.mVol), sMStart(ss.mStart || 0), sHv(v => v + 1);
     },
     canUndo = hist.current.past.length > 1,
     canRedo = hist.current.future.length > 0,
@@ -1706,7 +1722,7 @@ function Editor({
       h0.past.length && JSON.stringify(h0.past[h0.past.length - 1]) === js || (h0.past.push(ss), h0.past.length > 40 && h0.past.shift(), h0.future = [], sHv(v => v + 1));
     }, 340);
     return () => clearTimeout(h0.tmr);
-  }, [i, g, x, S, M, c, y, w, T, E, K, xt, N, U, b, kc, tsel, txs, mPath, mName, mDur, mVol]);
+  }, [i, g, x, S, M, c, y, w, T, E, K, xt, N, U, b, kc, tsel, txs, mPath, mName, mDur, mVol, mStart]);
   Ls.current = {
     colorSheet: gs,
     textSheet: hs,
@@ -1832,7 +1848,7 @@ function Editor({
       justifyContent: "center",
       background: "radial-gradient(80% 60% at 50% 40%, #14141f, #0A0A14)",
       minHeight: 0
-    }}><Preview ratio={i} bgType={g ? "black" : S} bgColor={M} bgImage={c} blurAmt={y} fill={g} scale={x / 100} adj={{
+    }}><Preview musicSrc={mPath ? window.Capacitor && window.Capacitor.convertFileSrc ? window.Capacitor.convertFileSrc(mPath) : mPath : null} musicVol={mVol} musicStart={mStart} ratio={i} bgType={g ? "black" : S} bgColor={M} bgImage={c} blurAmt={y} fill={g} scale={x / 100} adj={{
         b: w.b / 100,
         c: w.c / 100,
         s: w.s / 100
@@ -2142,7 +2158,7 @@ function Editor({
             fontSize: 9.5,
             color: d.muted
           }}>{mDur ? Math.round(mDur / 1000) + "s" : ""}</span><button onClick={() => {
-            sMPath(null), sMName(""), sMDur(0);
+            sMPath(null), sMName(""), sMDur(0), sMStart(0);
           }} title="Remove music" style={{
             background: "none",
             border: "none",
@@ -2257,7 +2273,15 @@ function Editor({
           display: "flex",
           gap: 7,
           marginBottom: 8
-        }}><Pill small={!0} active={(aSel === "music" ? mVol : b) === 0} onClick={() => aSel === "music" ? sMVol(0) : ue(0)}>{"Mute"}</Pill><Pill small={!0} active={(aSel === "music" ? mVol : b) === 50} onClick={() => aSel === "music" ? sMVol(50) : ue(50)}>{"50%"}</Pill><Pill small={!0} active={(aSel === "music" ? mVol : b) === 100} onClick={() => aSel === "music" ? sMVol(100) : ue(100)}>{"100%"}</Pill></div>{b === 0 && !mPath && <div style={{
+        }}><Pill small={!0} active={(aSel === "music" ? mVol : b) === 0} onClick={() => aSel === "music" ? sMVol(0) : ue(0)}>{"Mute"}</Pill><Pill small={!0} active={(aSel === "music" ? mVol : b) === 50} onClick={() => aSel === "music" ? sMVol(50) : ue(50)}>{"50%"}</Pill><Pill small={!0} active={(aSel === "music" ? mVol : b) === 100} onClick={() => aSel === "music" ? sMVol(100) : ue(100)}>{"100%"}</Pill></div>{aSel === "music" && mPath && mDur > 4000 && <div style={{
+          marginTop: 2
+        }}><Slider label="Music start" min={0} max={Math.max(1000, mDur - 3000)} value={mStart} onChange={sMStart} valLabel={Math.floor(mStart / 6e4) + ":" + String(Math.floor(mStart / 1e3) % 60).padStart(2, "0")} /><div style={{
+          fontFamily: L.sans,
+          fontSize: 10.5,
+          color: d.muted,
+          marginTop: -4,
+          marginBottom: 8
+        }}>{"Pick where the track starts \u2014 drag to the chorus."}</div></div>}{b === 0 && !mPath && <div style={{
           fontFamily: L.sans,
           fontSize: 11,
           color: d.muted
@@ -2557,6 +2581,7 @@ function Editor({
       bgImagePath: kc,
       musicPath: mPath,
       musicVolume: mVol / 100,
+      musicStartMs: mStart,
       texts: txs.filter(oo => oo && oo.value && oo.value.trim()),
       text: j ? {
         value: Lt,
@@ -3153,7 +3178,7 @@ function About({
         fontFamily: L.mono,
         fontSize: 9.5,
         color: "rgba(139,135,152,0.6)"
-      }}>{"Reelfit v0.9.9 · Music diagnostic · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
+      }}>{"Reelfit v1.0.0 · Music preview + trim · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
 }
 function TopBar({
   title: e,
@@ -3738,7 +3763,7 @@ function App() {
             radiusFrac: (C.radius || 0) / 244,
             borderColor: C.borderColor || "#FFFFFF"
           };
-          if (C.musicPath && (b.musicPath = C.musicPath, b.musicVolume = C.musicVolume == null ? 0.6 : C.musicVolume, b.musicClipMs = Math.max(500, Math.round((M.durationMs || 0) * ((C.trim && C.trim[1] != null ? C.trim[1] : 100) - (C.trim && C.trim[0] != null ? C.trim[0] : 0)) / 100 / (C.speed || 1)))), j === "image" && (b.bgImage = C.bgImagePath), C.texts && C.texts.length) {
+          if (C.musicPath && (b.musicPath = C.musicPath, b.musicVolume = C.musicVolume == null ? 0.6 : C.musicVolume, b.musicStartMs = C.musicStartMs || 0, b.musicClipMs = Math.max(500, Math.round((M.durationMs || 0) * ((C.trim && C.trim[1] != null ? C.trim[1] : 100) - (C.trim && C.trim[0] != null ? C.trim[0] : 0)) / 100 / (C.speed || 1)))), j === "image" && (b.bgImage = C.bgImagePath), C.texts && C.texts.length) {
             b.texts = C.texts.map(tl => {
               let ue = Wt[tl.style] || Wt.Clean,
                 pp = tl.pos || {

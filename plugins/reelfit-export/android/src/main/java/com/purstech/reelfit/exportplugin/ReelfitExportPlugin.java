@@ -364,7 +364,9 @@ public class ReelfitExportPlugin extends Plugin {
         }
         Double clipD = call.getDouble("musicClipMs");
         long musicClipMs = clipD != null ? (long) clipD.doubleValue() : 0L;
-        runTransform(call, mb.build(), fx, aud, removeAudio, musicPath, musicVol, musicClipMs);
+        Double startD = call.getDouble("musicStartMs");
+        long musicStartMs = startD != null ? (long) startD.doubleValue() : 0L;
+        runTransform(call, mb.build(), fx, aud, removeAudio, musicPath, musicVol, musicClipMs, musicStartMs);
     }
 
     /**
@@ -380,10 +382,10 @@ public class ReelfitExportPlugin extends Plugin {
     }
 
     private void runTransform(final PluginCall call, final MediaItem mediaItem, final List<Effect> videoFx, final List<AudioProcessor> audioFx, final boolean removeAudio) {
-        runTransform(call, mediaItem, videoFx, audioFx, removeAudio, null, 1f, 0L);
+        runTransform(call, mediaItem, videoFx, audioFx, removeAudio, null, 1f, 0L, 0L);
     }
 
-    private void runTransform(final PluginCall call, final MediaItem mediaItem, final List<Effect> videoFx, final List<AudioProcessor> audioFx, final boolean removeAudio, final String musicPath, final float musicVolume, final long musicClipMs) {
+    private void runTransform(final PluginCall call, final MediaItem mediaItem, final List<Effect> videoFx, final List<AudioProcessor> audioFx, final boolean removeAudio, final String musicPath, final float musicVolume, final long musicClipMs, final long musicStartMs) {
         final File outFile = new File(getContext().getCacheDir(),
                 "reelfit_" + System.currentTimeMillis() + ".mp4");
 
@@ -477,12 +479,18 @@ public class ReelfitExportPlugin extends Plugin {
                         if (clipMs < 1000L) clipMs = musicDurUs / 1000L;
                         lastClipMs = clipMs;
 
+                        // Start the track wherever the user dragged to, then take the clip length.
+                        long startMs = Math.max(0L, musicStartMs);
+                        long trackMs = musicDurUs / 1000L;
+                        if (startMs > Math.max(0L, trackMs - 1000L)) startMs = Math.max(0L, trackMs - 1000L);
+                        long endMs = startMs + clipMs;
+                        if (endMs > trackMs) endMs = trackMs;
                         MediaItem musicMedia = new MediaItem.Builder()
                                 .setUri(Uri.fromFile(new File(musicPath)))
                                 .setClippingConfiguration(
                                         new MediaItem.ClippingConfiguration.Builder()
-                                                .setStartPositionMs(0)
-                                                .setEndPositionMs(clipMs)
+                                                .setStartPositionMs(startMs)
+                                                .setEndPositionMs(endMs)
                                                 .build())
                                 .build();
                         EditedMediaItem musicItem = new EditedMediaItem.Builder(musicMedia)
