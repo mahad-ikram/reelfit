@@ -2803,8 +2803,9 @@ function Success({
         borderRadius: 8,
         padding: "7px 9px",
         marginTop: 10,
-        textAlign: "center"
-      }}>{"music: " + (t.mixMode || "?") + " \u00B7 file " + (t.musicOnDisk ? "ok" : "MISSING") + " \u00B7 " + (t.musicBytes > 0 ? Math.round(t.musicBytes / 1024) + "kb" : "0kb") + " \u00B7 vol " + Math.round((t.musicVolume == null ? 0 : t.musicVolume) * 100) + "%"}</div>}<div style={{
+        textAlign: "center",
+        whiteSpace: "pre-line"
+      }}>{"mix " + (t.mixMode || "?") + " \u00B7 file " + (t.musicOnDisk ? "ok" : "MISSING") + " \u00B7 audio " + (t.audioProcess || "?") + "\n" + "clip " + (t.clipMs == null ? "?" : t.clipMs) + "ms \u00B7 out " + (t.outDurationMs == null ? "?" : t.outDurationMs) + "ms \u00B7 " + (t.channelCount == null ? "?" : t.channelCount) + "ch " + (t.sampleRate == null ? "?" : t.sampleRate) + "Hz"}</div>}<div style={{
         fontFamily: L.sans,
         fontSize: 12.5,
         color: d.muted,
@@ -3149,7 +3150,7 @@ function About({
         fontFamily: L.mono,
         fontSize: 9.5,
         color: "rgba(139,135,152,0.6)"
-      }}>{"Reelfit v0.9.6 · Music mix fix · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
+      }}>{"Reelfit v0.9.8 · Music diagnostic · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
 }
 function TopBar({
   title: e,
@@ -3759,7 +3760,11 @@ function App() {
         S({
           pct: 100,
           result: $
-        }), B(C, $), setTimeout(() => t("success"), 350);
+        }), B(C, $), C.musicPath && $ && setTimeout(() => {
+          try {
+            alert("MUSIC DIAGNOSTIC\n\n" + "mix       : " + ($.mixMode || "?") + "\n" + "file      : " + ($.musicOnDisk ? "ok" : "MISSING") + "  " + ($.musicBytes > 0 ? Math.round($.musicBytes / 1024) + "kb" : "0kb") + "\n" + "volume    : " + Math.round(($.musicVolume == null ? 0 : $.musicVolume) * 100) + "%\n" + "clip sent : " + (b.musicClipMs || 0) + "ms\n" + "clip used : " + ($.clipMs == null ? "?" : $.clipMs) + "ms\n" + "out length: " + ($.outDurationMs == null ? "?" : $.outDurationMs) + "ms\n" + "audio     : " + ($.audioProcess || "?") + "\n" + "channels  : " + ($.channelCount == null ? "?" : $.channelCount) + "   rate: " + ($.sampleRate == null ? "?" : $.sampleRate) + "\n" + "bitrate   : " + ($.audioBitrate == null ? "?" : $.audioBitrate));
+          } catch (qq) {}
+        }, 600), setTimeout(() => t("success"), 350);
       } catch ($) {
         t("editor"), alert("Export cancelled or failed: " + ($ && $.message || $));
       }

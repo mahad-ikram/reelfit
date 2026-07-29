@@ -57,6 +57,7 @@ public class ReelfitExportPlugin extends Plugin {
     private Handler progressHandler;
     private long exportStartMs;
     private Uri lastSavedUri;
+    private long lastClipMs;
 
     @PluginMethod
     public void pickAndExport(PluginCall call) {
@@ -420,6 +421,17 @@ public class ReelfitExportPlugin extends Plugin {
                                     ret.put("musicOnDisk", musicOnDisk);
                                     ret.put("musicBytes", musicBytes);
                                     ret.put("musicVolume", musicVolume);
+                                    ret.put("clipMs", lastClipMs);
+                                    try {
+                                        ret.put("outDurationMs", exportResult.durationMs);
+                                        ret.put("channelCount", exportResult.channelCount);
+                                        ret.put("sampleRate", exportResult.sampleRate);
+                                        ret.put("audioBitrate", exportResult.averageAudioBitrate);
+                                        int ap = exportResult.audioConversionProcess;
+                                        ret.put("audioProcess", ap == 1 ? "transcoded"
+                                                : ap == 2 ? "TRANSMUXED(copied)"
+                                                : ap == 3 ? "mixed" : "none");
+                                    } catch (Throwable ignored) {}
                                     ret.put("durationMs", System.currentTimeMillis() - exportStartMs);
                                     ret.put("uri", lastSavedUri != null ? lastSavedUri.toString() : "");
                                     call.resolve(ret);
@@ -460,8 +472,10 @@ public class ReelfitExportPlugin extends Plugin {
                         }
                         if (musicDurUs <= 0L) musicDurUs = 60_000_000L;
 
-                        long clipMs = musicClipMs > 0L ? musicClipMs : (musicDurUs / 1000L);
+                        long clipMs = musicClipMs >= 1000L ? musicClipMs : (musicDurUs / 1000L);
                         if (clipMs > musicDurUs / 1000L) clipMs = musicDurUs / 1000L;
+                        if (clipMs < 1000L) clipMs = musicDurUs / 1000L;
+                        lastClipMs = clipMs;
 
                         MediaItem musicMedia = new MediaItem.Builder()
                                 .setUri(Uri.fromFile(new File(musicPath)))
@@ -478,9 +492,13 @@ public class ReelfitExportPlugin extends Plugin {
 
                         EditedMediaItemSequence videoSeq = new EditedMediaItemSequence.Builder(item).build();
                         EditedMediaItemSequence musicSeq = new EditedMediaItemSequence.Builder(musicItem).build();
-                        Composition.Builder cb = new Composition.Builder(videoSeq, musicSeq);
-                        if (removeAudio) cb.experimentalSetForceAudioTrack(true);
-                        transformer.start(cb.build(), outFile.getAbsolutePath());
+                        // Force an audio track whenever music is present: without it Transformer
+                        // can transmux (straight-copy) the source audio and never run the mixer.
+                        Composition composition = new Composition.Builder(videoSeq, musicSeq)
+                                .experimentalSetForceAudioTrack(true)
+                                .setTransmuxAudio(false)
+                                .build();
+                        transformer.start(composition, outFile.getAbsolutePath());
                     } else {
                         transformer.start(item, outFile.getAbsolutePath());
                     }
