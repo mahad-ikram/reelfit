@@ -36,7 +36,7 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
   await t('audio loops for short tracks', ()=>{ const a=w.document.querySelector('audio'); return a && a.hasAttribute('loop'); });
   await t('Music start slider appears when track selected', async()=>{
     tap('Knockout'); await wait(350);
-    return txt().includes('Music start') && txt().includes('drag to the chorus');
+    return txt().includes('Music start');
   });
   await t('dragging start shows mm:ss', async()=>{
     const rng=[...w.document.querySelectorAll('input[type="range"]')];
@@ -45,6 +45,25 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
     setRange(target,'65000'); await wait(400);
     return txt().includes('1:05');
   });
+  await t('MORE hint appears when the panel overflows', async()=>{
+    // jsdom has no layout, so fake the overflow the checker measures
+    const panel=[...w.document.querySelectorAll('div')].find(d=>(d.getAttribute('style')||'').includes('max-height: 200px'));
+    if(!panel) return false;
+    Object.defineProperty(panel,'scrollHeight',{value:420,configurable:true});
+    Object.defineProperty(panel,'clientHeight',{value:200,configurable:true});
+    Object.defineProperty(panel,'scrollTop',{value:0,writable:true,configurable:true});
+    panel.dispatchEvent(new w.Event('scroll',{bubbles:false}));
+    await wait(300);
+    return txt().includes('MORE');
+  });
+  await t('MORE hint disappears once scrolled to the end', async()=>{
+    const panel=[...w.document.querySelectorAll('div')].find(d=>(d.getAttribute('style')||'').includes('max-height: 200px'));
+    Object.defineProperty(panel,'scrollTop',{value:220,writable:true,configurable:true});
+    panel.dispatchEvent(new w.Event('scroll',{bubbles:false}));
+    await wait(300);
+    return !txt().includes('MORE');
+  });
+  await t('no diagnostic card in the app', ()=> !txt().includes('MUSIC DIAGNOSTIC'));
   await t('start offset reaches export payload', async()=>{
     tap('Export'); await wait(600);
     const b=all().filter(x=>x.tagName==='BUTTON'&&(x.textContent||'').includes('Export 1080p'));

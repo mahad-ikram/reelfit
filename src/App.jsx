@@ -625,7 +625,22 @@ function Preview({
     N = `brightness(${s.b}) contrast(${s.c}) saturate(${s.s}) ${i}`,
     te = useRef(null),
     mAud = useRef(null),
+    mCfg = useRef({}),
     j = useRef(!1);
+  mCfg.current = {
+    src: MSRC,
+    vol: MVOL,
+    start: MSTART
+  };
+  useEffect(() => {
+    let ae = mAud.current;
+    if (ae) {
+      if (MSRC) {
+        ae.volume = Math.max(0, Math.min(1, (MVOL == null ? 60 : MVOL) / 100));
+        ae.play().catch(() => {});
+      } else ae.pause();
+    }
+  }, [MSRC, MVOL]);
   return <div ref={te} style={{
     width: q,
     height: E,
@@ -684,10 +699,11 @@ function Preview({
           let U = parseFloat(z.dataset.ts),
             $ = parseFloat(z.dataset.te);
           (z.currentTime < U - 0.25 || z.currentTime > $) && (z.currentTime = U);
-          let ae = mAud.current;
-          if (ae && MSRC) {
-            ae.volume = Math.max(0, Math.min(1, (MVOL == null ? 60 : MVOL) / 100));
-            let want = (MSTART || 0) / 1e3 + (z.currentTime - U);
+          let ae = mAud.current,
+            cf = mCfg.current;
+          if (ae && cf.src) {
+            ae.volume = Math.max(0, Math.min(1, (cf.vol == null ? 60 : cf.vol) / 100));
+            let want = (cf.start || 0) / 1e3 + (z.currentTime - U);
             ae.duration && want > ae.duration && (want %= ae.duration);
             Math.abs(ae.currentTime - want) > 0.35 && (ae.currentTime = Math.max(0, want));
             z.paused ? ae.paused || ae.pause() : ae.paused && ae.play().catch(() => {});
@@ -712,8 +728,12 @@ function Preview({
         display: "flex",
         alignItems: "center",
         justifyContent: "center"
-      }}><Play size={15} color="#fff" fill="#fff" /></div>}{MSRC && <audio ref={mAud} src={MSRC} loop={!0} preload="auto" style={{
-        display: "none"
+      }}><Play size={15} color="#fff" fill="#fff" /></div>}{MSRC && <audio ref={mAud} src={MSRC} loop={!0} preload="auto" playsInline={!0} style={{
+        position: "absolute",
+        width: 0,
+        height: 0,
+        opacity: 0,
+        pointerEvents: "none"
       }} />}</div><div style={{
       position: "absolute",
       right: 7,
@@ -1652,6 +1672,12 @@ function Editor({
     [mVol, sMVol] = useState(60),
     [aSel, sASel] = useState("orig"),
     [mStart, sMStart] = useState(0),
+    panelRef = useRef(null),
+    [panelMore, sPanelMore] = useState(!1),
+    panelCheck = () => {
+      let el = panelRef.current;
+      el && sPanelMore(el.scrollHeight - el.scrollTop - el.clientHeight > 6);
+    },
     pickMusic = () => {
       let P = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ReelfitExport;
       if (!P || !P.pickAudio) {
@@ -1709,6 +1735,14 @@ function Editor({
       let ss = h0.future.pop();
       h0.past.push(ss), applySnap(ss);
     };
+  useEffect(() => {
+    panelCheck();
+    let t1 = setTimeout(panelCheck, 120),
+      t2 = setTimeout(panelCheck, 420);
+    return () => {
+      clearTimeout(t1), clearTimeout(t2);
+    };
+  }, [n, mPath, aSel, j, txs.length, S, T, g, mStart]);
   useEffect(() => {
     let h0 = hist.current;
     if (h0.applying) {
@@ -1853,6 +1887,8 @@ function Editor({
         c: w.c / 100,
         s: w.s / 100
       }} filterCss={Ac} border={K} radius={N} borderColor={xt} texts={txs} selIndex={tIdx} onTextMove={(ii, pp) => updAt(ii, { pos: pp })} onTextSelect={sTsel} trim={U} speed={E} vol={b} onThumb={r} media={o} /></div><div style={{
+      position: "relative"
+    }}><div style={{
       background: d.eclipse2,
       borderTop: `1px solid ${d.line}`,
       padding: "13px 16px 6px",
@@ -1860,7 +1896,7 @@ function Editor({
       minHeight: 128,
       maxHeight: 200,
       overflowY: "auto"
-    }}>{n === "format" && <><div style={{
+    }} ref={panelRef} onScroll={panelCheck}>{n === "format" && <><div style={{
           display: "flex",
           gap: 6,
           marginBottom: 12,
@@ -2275,13 +2311,7 @@ function Editor({
           marginBottom: 8
         }}><Pill small={!0} active={(aSel === "music" ? mVol : b) === 0} onClick={() => aSel === "music" ? sMVol(0) : ue(0)}>{"Mute"}</Pill><Pill small={!0} active={(aSel === "music" ? mVol : b) === 50} onClick={() => aSel === "music" ? sMVol(50) : ue(50)}>{"50%"}</Pill><Pill small={!0} active={(aSel === "music" ? mVol : b) === 100} onClick={() => aSel === "music" ? sMVol(100) : ue(100)}>{"100%"}</Pill></div>{aSel === "music" && mPath && mDur > 4000 && <div style={{
           marginTop: 2
-        }}><Slider label="Music start" min={0} max={Math.max(1000, mDur - 3000)} value={mStart} onChange={sMStart} valLabel={Math.floor(mStart / 6e4) + ":" + String(Math.floor(mStart / 1e3) % 60).padStart(2, "0")} /><div style={{
-          fontFamily: L.sans,
-          fontSize: 10.5,
-          color: d.muted,
-          marginTop: -4,
-          marginBottom: 8
-        }}>{"Pick where the track starts \u2014 drag to the chorus."}</div></div>}{b === 0 && !mPath && <div style={{
+        }}><Slider label="Music start" min={0} max={Math.max(1000, mDur - 3000)} value={mStart} onChange={sMStart} valLabel={Math.floor(mStart / 6e4) + ":" + String(Math.floor(mStart / 1e3) % 60).padStart(2, "0")} /></div>}{b === 0 && !mPath && <div style={{
           fontFamily: L.sans,
           fontSize: 11,
           color: d.muted
@@ -2564,7 +2594,25 @@ function Editor({
             fontWeight: Ja ? 700 : 500,
             color: Ja ? d.volt : d.muted
           }}>{ql}</span></button>;
-      })}</div>{vs && <ExportSheet go={e} close={() => Hl(!1)} ratio={i} onExport={() => a({
+      })}</div>{panelMore && <div style={{
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: 30,
+      pointerEvents: "none",
+      background: `linear-gradient(180deg, rgba(10,10,20,0) 0%, ${d.eclipse} 92%)`,
+      display: "flex",
+      alignItems: "flex-end",
+      justifyContent: "center",
+      paddingBottom: 2
+    }}><span style={{
+        fontFamily: L.mono,
+        fontSize: 9,
+        fontWeight: 700,
+        letterSpacing: "0.06em",
+        color: d.voltSoft
+      }}>{"\u25BE MORE"}</span></div>}</div>{vs && <ExportSheet go={e} close={() => Hl(!1)} ratio={i} onExport={() => a({
       ratio: i,
       fill: g,
       bgType: S,
@@ -2818,22 +2866,7 @@ function Success({
         fontSize: 19,
         color: d.bone,
         marginBottom: 5
-      }}>{"Ready to post"}</div>{t && t.musicGiven && <div style={{
-        fontFamily: L.mono,
-        fontSize: 12,
-        fontWeight: 700,
-        lineHeight: 1.65,
-        color: "#0A0A14",
-        background: t.audioProcess === "transcoded" || t.audioProcess === "mixed" ? "#3DDC97" : "#FFD23F",
-        border: "2px solid #fff",
-        borderRadius: 12,
-        padding: "12px 14px",
-        marginTop: 14,
-        width: "100%",
-        textAlign: "left",
-        whiteSpace: "pre",
-        overflowX: "auto"
-      }}>{"MUSIC DIAGNOSTIC\n" + "mix        " + (t.mixMode || "?") + "\n" + "file       " + (t.musicOnDisk ? "ok " + (t.musicBytes > 0 ? Math.round(t.musicBytes / 1024) + "kb" : "0kb") : "MISSING") + "\n" + "volume     " + Math.round((t.musicVolume == null ? 0 : t.musicVolume) * 100) + "%\n" + "clip used  " + (t.clipMs == null ? "?" : t.clipMs) + "ms\n" + "out length " + (t.outDurationMs == null ? "?" : t.outDurationMs) + "ms\n" + "audio      " + (t.audioProcess || "?") + "\n" + "channels   " + (t.channelCount == null ? "?" : t.channelCount) + "    rate " + (t.sampleRate == null ? "?" : t.sampleRate) + "\n" + "bitrate    " + (t.audioBitrate == null ? "?" : t.audioBitrate)}</div>}<div style={{
+      }}>{"Ready to post"}</div><div style={{
         fontFamily: L.sans,
         fontSize: 12.5,
         color: d.muted,
@@ -3178,7 +3211,7 @@ function About({
         fontFamily: L.mono,
         fontSize: 9.5,
         color: "rgba(139,135,152,0.6)"
-      }}>{"Reelfit v1.0.0 · Music preview + trim · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
+      }}>{"Reelfit v1.0.1 · Music preview + audio UX · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
 }
 function TopBar({
   title: e,
@@ -3788,11 +3821,7 @@ function App() {
         S({
           pct: 100,
           result: $
-        }), B(C, $), C.musicPath && $ && setTimeout(() => {
-          try {
-            alert("MUSIC DIAGNOSTIC\n\n" + "mix       : " + ($.mixMode || "?") + "\n" + "file      : " + ($.musicOnDisk ? "ok" : "MISSING") + "  " + ($.musicBytes > 0 ? Math.round($.musicBytes / 1024) + "kb" : "0kb") + "\n" + "volume    : " + Math.round(($.musicVolume == null ? 0 : $.musicVolume) * 100) + "%\n" + "clip sent : " + (b.musicClipMs || 0) + "ms\n" + "clip used : " + ($.clipMs == null ? "?" : $.clipMs) + "ms\n" + "out length: " + ($.outDurationMs == null ? "?" : $.outDurationMs) + "ms\n" + "audio     : " + ($.audioProcess || "?") + "\n" + "channels  : " + ($.channelCount == null ? "?" : $.channelCount) + "   rate: " + ($.sampleRate == null ? "?" : $.sampleRate) + "\n" + "bitrate   : " + ($.audioBitrate == null ? "?" : $.audioBitrate));
-          } catch (qq) {}
-        }, 600), setTimeout(() => t("success"), 350);
+        }), B(C, $), setTimeout(() => t("success"), 350);
       } catch ($) {
         t("editor"), alert("Export cancelled or failed: " + ($ && $.message || $));
       }
