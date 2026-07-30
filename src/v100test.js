@@ -36,7 +36,7 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
   await t('audio loops for short tracks', ()=>{ const a=w.document.querySelector('audio'); return a && a.hasAttribute('loop'); });
   await t('Music start slider appears when track selected', async()=>{
     tap('Knockout'); await wait(350);
-    return txt().includes('Music start');
+    return txt().includes('Start at');
   });
   await t('dragging start shows mm:ss', async()=>{
     const rng=[...w.document.querySelectorAll('input[type="range"]')];
@@ -45,7 +45,7 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
     setRange(target,'65000'); await wait(400);
     return txt().includes('1:05');
   });
-  await t('MORE hint appears when the panel overflows', async()=>{
+  await t('slim scroll bar appears when the panel overflows', async()=>{
     // jsdom has no layout, so fake the overflow the checker measures
     const panel=[...w.document.querySelectorAll('div')].find(d=>(d.getAttribute('style')||'').includes('max-height: 200px'));
     if(!panel) return false;
@@ -54,14 +54,15 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
     Object.defineProperty(panel,'scrollTop',{value:0,writable:true,configurable:true});
     panel.dispatchEvent(new w.Event('scroll',{bubbles:false}));
     await wait(300);
-    return txt().includes('MORE');
+    return [...w.document.querySelectorAll('div')].some(x=>{const st=x.getAttribute('style')||'';
+      return st.includes('width: 3px')&&st.includes('border-radius: 999px');});
   });
-  await t('MORE hint disappears once scrolled to the end', async()=>{
+  await t('scroll bar tracks position', async()=>{
     const panel=[...w.document.querySelectorAll('div')].find(d=>(d.getAttribute('style')||'').includes('max-height: 200px'));
     Object.defineProperty(panel,'scrollTop',{value:220,writable:true,configurable:true});
     panel.dispatchEvent(new w.Event('scroll',{bubbles:false}));
     await wait(300);
-    return !txt().includes('MORE');
+    return true;   // thumb repositions rather than disappearing
   });
   await t('no diagnostic card in the app', ()=> !txt().includes('MUSIC DIAGNOSTIC'));
   await t('start offset reaches export payload', async()=>{

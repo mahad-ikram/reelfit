@@ -41,7 +41,7 @@ const t=async(name,fn)=>{const b=errs.length; let ok=false; try{ ok=await fn(); 
   await t('text sheet opens', async()=>{ tap('Add text'); await wait(450); return txt().includes('Colour') && txt().includes('Auto'); });
   await t('type text', async()=>{ const i=w.document.querySelector('input[type="text"],input:not([type])'); if(!i) return false; type(i,'HELLO'); await wait(250); return txt().includes('HELLO'); });
   await t('pick yellow swatch', async()=>{
-    const sw=all().filter(x=>x.tagName==='BUTTON'&&(x.getAttribute('style')||'').includes('rgb(255, 210, 63)'));
+    const sw=all().filter(x=>{const st=x.getAttribute('style')||''; return x.tagName==='BUTTON'&&st.includes('rgb(255, 210, 63)')&&!st.includes('conic-gradient');});
     if(!sw.length) return false; sw[0].dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await wait(250);
     return html().includes('rgb(255, 210, 63)');
   });

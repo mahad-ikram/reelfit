@@ -373,16 +373,7 @@ function TextSheet({
           fontWeight: 700,
           color: cl ? d.mutedHi : "#fff",
           cursor: "pointer"
-        }}>{"Auto"}</button>{lg.map(cc0 => <button key={cc0} onClick={() => scl(cc0)} style={{
-          flex: "0 0 auto",
-          width: 30,
-          height: 30,
-          borderRadius: "50%",
-          padding: 0,
-          background: cc0,
-          border: cl === cc0 ? `2.5px solid ${d.bone}` : `1px solid ${d.line2}`,
-          cursor: "pointer"
-        }} />)}<button onClick={ocu} style={{
+        }}>{"Auto"}</button><button onClick={ocu} style={{
           flex: "0 0 auto",
           width: 30,
           height: 30,
@@ -398,7 +389,16 @@ function TextSheet({
             borderRadius: "50%",
             background: cl && lg.indexOf(cl) === -1 ? cl : d.eclipse,
             border: `1px solid rgba(255,255,255,0.35)`
-          }} /></button></div><div style={{
+          }} /></button>{lg.map(cc0 => <button key={cc0} onClick={() => scl(cc0)} style={{
+          flex: "0 0 auto",
+          width: 30,
+          height: 30,
+          borderRadius: "50%",
+          padding: 0,
+          background: cc0,
+          border: cl === cc0 ? `2.5px solid ${d.bone}` : `1px solid ${d.line2}`,
+          cursor: "pointer"
+        }} />)}</div><div style={{
         display: "flex",
         gap: 10
       }}>{r && <button onClick={r} style={{
@@ -1673,10 +1673,21 @@ function Editor({
     [aSel, sASel] = useState("orig"),
     [mStart, sMStart] = useState(0),
     panelRef = useRef(null),
-    [panelMore, sPanelMore] = useState(!1),
+    [panelBar, sPanelBar] = useState(null),
     panelCheck = () => {
       let el = panelRef.current;
-      el && sPanelMore(el.scrollHeight - el.scrollTop - el.clientHeight > 6);
+      if (!el) return;
+      let sh = el.scrollHeight,
+        ch = el.clientHeight;
+      if (sh <= ch + 4) {
+        sPanelBar(null);
+        return;
+      }
+      let th = Math.max(20, ch * ch / sh);
+      sPanelBar({
+        top: el.scrollTop / (sh - ch) * (ch - th),
+        h: th
+      });
     },
     pickMusic = () => {
       let P = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ReelfitExport;
@@ -1895,7 +1906,8 @@ function Editor({
       flex: "0 0 auto",
       minHeight: 128,
       maxHeight: 200,
-      overflowY: "auto"
+      overflowY: "auto",
+      paddingRight: 7
     }} ref={panelRef} onScroll={panelCheck}>{n === "format" && <><div style={{
           display: "flex",
           gap: 6,
@@ -2261,57 +2273,81 @@ function Editor({
           Ic0: Music
         }] : []).map(tr => {
           let on = aSel === tr.k,
-            Ic1 = tr.Ic0;
-          return <button key={tr.k} onClick={() => sASel(tr.k)} style={{
-            width: "100%",
-            display: "flex",
-            alignItems: "center",
-            gap: 9,
-            background: on ? d.voltDim : d.card,
+            Ic1 = tr.Ic0,
+            val = tr.k === "music" ? mVol : b,
+            setVal = tr.k === "music" ? sMVol : ue;
+          return <div key={tr.k} style={{
+            marginBottom: 7,
+            borderRadius: 12,
             border: `1px solid ${on ? d.volt : d.line}`,
-            borderRadius: 10,
-            padding: "8px 10px",
-            cursor: "pointer",
-            textAlign: "left"
-          }}><Ic1 size={14} color={on ? d.volt : d.mutedHi} /><span style={{
-              width: 74,
-              flex: "0 0 auto",
-              fontFamily: L.sans,
-              fontSize: 11.5,
-              fontWeight: 700,
-              color: on ? d.bone : d.mutedHi,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis"
-            }}>{tr.l}</span><span style={{
-              flex: 1,
-              height: 16,
-              borderRadius: 4,
-              background: "rgba(255,255,255,0.05)",
-              position: "relative",
-              overflow: "hidden"
-            }}><span style={{
-                position: "absolute",
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: tr.v + "%",
-                background: on ? `linear-gradient(90deg, ${d.volt}, ${d.voltSoft})` : "rgba(139,135,152,0.35)"
-              }} /></span><span style={{
-              width: 34,
-              textAlign: "right",
-              flex: "0 0 auto",
-              fontFamily: L.mono,
-              fontSize: 10,
-              color: on ? d.bone : d.muted
-            }}>{tr.v + "%"}</span></button>;
-        })}</div><Slider label={aSel === "music" ? "Music volume" : "Original volume"} min={0} max={100} value={aSel === "music" ? mVol : b} onChange={aSel === "music" ? sMVol : ue} valLabel={(aSel === "music" ? mVol : b) + "%"} /><div style={{
-          display: "flex",
-          gap: 7,
-          marginBottom: 8
-        }}><Pill small={!0} active={(aSel === "music" ? mVol : b) === 0} onClick={() => aSel === "music" ? sMVol(0) : ue(0)}>{"Mute"}</Pill><Pill small={!0} active={(aSel === "music" ? mVol : b) === 50} onClick={() => aSel === "music" ? sMVol(50) : ue(50)}>{"50%"}</Pill><Pill small={!0} active={(aSel === "music" ? mVol : b) === 100} onClick={() => aSel === "music" ? sMVol(100) : ue(100)}>{"100%"}</Pill></div>{aSel === "music" && mPath && mDur > 4000 && <div style={{
-          marginTop: 2
-        }}><Slider label="Music start" min={0} max={Math.max(1000, mDur - 3000)} value={mStart} onChange={sMStart} valLabel={Math.floor(mStart / 6e4) + ":" + String(Math.floor(mStart / 1e3) % 60).padStart(2, "0")} /></div>}{b === 0 && !mPath && <div style={{
+            background: on ? "rgba(108,58,255,0.10)" : d.card,
+            overflow: "hidden"
+          }}><button onClick={() => sASel(tr.k)} style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: 9,
+              background: "none",
+              border: "none",
+              padding: "9px 10px",
+              cursor: "pointer",
+              textAlign: "left"
+            }}><Ic1 size={14} color={on ? d.volt : d.mutedHi} /><span style={{
+                flex: 1,
+                minWidth: 0,
+                fontFamily: L.sans,
+                fontSize: 12,
+                fontWeight: 700,
+                color: on ? d.bone : d.mutedHi,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis"
+              }}>{tr.l}</span><span style={{
+                width: 52,
+                flex: "0 0 auto",
+                height: 4,
+                borderRadius: 999,
+                background: "rgba(255,255,255,0.10)",
+                position: "relative",
+                overflow: "hidden"
+              }}><span style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: val + "%",
+                  background: on ? d.volt : "rgba(139,135,152,0.45)"
+                }} /></span><span style={{
+                width: 32,
+                textAlign: "right",
+                flex: "0 0 auto",
+                fontFamily: L.mono,
+                fontSize: 10,
+                color: on ? d.bone : d.muted
+              }}>{val + "%"}</span></button>{on && <div style={{
+              padding: "0 10px 9px"
+            }}><Slider label="Volume" min={0} max={100} value={val} onChange={setVal} valLabel={val + "%"} /><div style={{
+                display: "flex",
+                gap: 6,
+                marginBottom: tr.k === "music" && mDur > 4000 ? 8 : 0
+              }}><Pill small={!0} active={val === 0} onClick={() => setVal(0)}>{"Mute"}</Pill><Pill small={!0} active={val === 50} onClick={() => setVal(50)}>{"50%"}</Pill><Pill small={!0} active={val === 100} onClick={() => setVal(100)}>{"100%"}</Pill>{tr.k === "music" && <button onClick={() => {
+                  sMPath(null), sMName(""), sMDur(0), sMStart(0), sASel("orig");
+                }} style={{
+                  marginLeft: "auto",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  background: "none",
+                  border: `1px solid ${d.line2}`,
+                  borderRadius: 999,
+                  padding: "5px 10px",
+                  fontFamily: L.sans,
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  color: d.mutedHi,
+                  cursor: "pointer"
+                }}><X size={11} color={d.mutedHi} />{"Remove"}</button>}</div>{tr.k === "music" && mDur > 4000 && <Slider label="Start at" min={0} max={Math.max(1000, mDur - 3000)} value={mStart} onChange={sMStart} valLabel={Math.floor(mStart / 6e4) + ":" + String(Math.floor(mStart / 1e3) % 60).padStart(2, "0")} />}</div>}</div>;
+        })}</div>{b === 0 && !mPath && <div style={{
           fontFamily: L.sans,
           fontSize: 11,
           color: d.muted
@@ -2415,16 +2451,7 @@ function Editor({
               fontWeight: 700,
               color: tcol ? d.mutedHi : "#fff",
               cursor: "pointer"
-            }}>{"Auto"}</button>{lg.map(cc1 => <button key={cc1} onClick={() => sTcol(cc1)} style={{
-              flex: "0 0 auto",
-              width: 28,
-              height: 28,
-              borderRadius: "50%",
-              padding: 0,
-              background: cc1,
-              border: tcol === cc1 ? `2.5px solid ${d.bone}` : `1px solid ${d.line2}`,
-              cursor: "pointer"
-            }} />)}<button onClick={() => { pcSnap.current = tcol, sCtar("text"), dr(!0); }} style={{
+            }}>{"Auto"}</button><button onClick={() => { pcSnap.current = tcol, sCtar("text"), dr(!0); }} style={{
               flex: "0 0 auto",
               width: 28,
               height: 28,
@@ -2440,7 +2467,16 @@ function Editor({
                 borderRadius: "50%",
                 background: tcol && lg.indexOf(tcol) === -1 ? tcol : d.eclipse,
                 border: "1px solid rgba(255,255,255,0.35)"
-              }} /></button></div></div>}<div style={{
+              }} /></button>{lg.map(cc1 => <button key={cc1} onClick={() => sTcol(cc1)} style={{
+              flex: "0 0 auto",
+              width: 28,
+              height: 28,
+              borderRadius: "50%",
+              padding: 0,
+              background: cc1,
+              border: tcol === cc1 ? `2.5px solid ${d.bone}` : `1px solid ${d.line2}`,
+              cursor: "pointer"
+            }} />)}</div></div>}<div style={{
           display: "flex",
           gap: 7,
           overflowX: "auto"
@@ -2459,18 +2495,7 @@ function Editor({
           overflowX: "auto",
           paddingBottom: 2,
           gap: 8
-        }}>{["#FFFFFF", "#0A0A14"].concat(lg).map(k => <button onClick={() => {
-            C(k), K === 0 && Te(4);
-          }} style={{
-            flex: "0 0 auto",
-            width: 26,
-            height: 26,
-            borderRadius: 999,
-            background: k,
-            cursor: "pointer",
-            padding: 0,
-            border: xt === k ? `2px solid ${d.volt}` : `1px solid ${d.line2}`
-          }} key={k} />)}<button onClick={() => {
+        }}><button onClick={() => {
             pcSnap.current = xt, sCtar("border"), K === 0 && Te(4), dr(!0);
           }} style={{
             flex: "0 0 auto",
@@ -2488,7 +2513,18 @@ function Editor({
               borderRadius: "50%",
               background: ["#FFFFFF", "#0A0A14"].concat(lg).indexOf(xt) === -1 ? xt : d.eclipse,
               border: "1px solid rgba(255,255,255,0.35)"
-            }} /></button></div></div>}{n === "captions" && <div style={{
+            }} /></button>{["#FFFFFF", "#0A0A14"].concat(lg).map(k => <button onClick={() => {
+            C(k), K === 0 && Te(4);
+          }} style={{
+            flex: "0 0 auto",
+            width: 26,
+            height: 26,
+            borderRadius: 999,
+            background: k,
+            cursor: "pointer",
+            padding: 0,
+            border: xt === k ? `2px solid ${d.volt}` : `1px solid ${d.line2}`
+          }} key={k} />)}</div></div>}{n === "captions" && <div style={{
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -2594,25 +2630,17 @@ function Editor({
             fontWeight: Ja ? 700 : 500,
             color: Ja ? d.volt : d.muted
           }}>{ql}</span></button>;
-      })}</div>{panelMore && <div style={{
+      })}</div>{panelBar && <div style={{
       position: "absolute",
-      left: 0,
-      right: 0,
-      bottom: 0,
-      height: 30,
-      pointerEvents: "none",
-      background: `linear-gradient(180deg, rgba(10,10,20,0) 0%, ${d.eclipse} 92%)`,
-      display: "flex",
-      alignItems: "flex-end",
-      justifyContent: "center",
-      paddingBottom: 2
-    }}><span style={{
-        fontFamily: L.mono,
-        fontSize: 9,
-        fontWeight: 700,
-        letterSpacing: "0.06em",
-        color: d.voltSoft
-      }}>{"\u25BE MORE"}</span></div>}</div>{vs && <ExportSheet go={e} close={() => Hl(!1)} ratio={i} onExport={() => a({
+      right: 1,
+      top: panelBar.top,
+      width: 3,
+      height: panelBar.h,
+      borderRadius: 999,
+      background: d.voltSoft,
+      opacity: 0.5,
+      pointerEvents: "none"
+    }} />}</div>{vs && <ExportSheet go={e} close={() => Hl(!1)} ratio={i} onExport={() => a({
       ratio: i,
       fill: g,
       bgType: S,
@@ -3211,7 +3239,7 @@ function About({
         fontFamily: L.mono,
         fontSize: 9.5,
         color: "rgba(139,135,152,0.6)"
-      }}>{"Reelfit v1.0.1 · Music preview + audio UX · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
+      }}>{"Reelfit v1.0.2 · Audio UX · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
 }
 function TopBar({
   title: e,
@@ -3619,13 +3647,13 @@ function Splash() {
       position: "relative"
     }}><span style={{
         fontFamily: L.sans,
-        fontSize: 9,
+        fontSize: 10.5,
         fontWeight: 600,
         letterSpacing: "0.05em",
-        color: "#8E86A6"
+        color: "#9891AE"
       }}>{"Powered By"}</span><img src={Ig} alt="PursTech" style={{
-        width: "34%",
-        maxWidth: 168,
+        width: "40%",
+        maxWidth: 196,
         display: "block"
       }} /></div></div>;
 }

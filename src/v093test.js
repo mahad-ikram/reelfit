@@ -36,7 +36,7 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
   await t('track bars show both audio tracks', ()=> txt().includes('Original audio') && txt().includes('Knockout'));
   await t('selecting Music track switches the slider', async()=>{
     tap('Knockout'); await wait(350);
-    return txt().includes('Music volume');
+    return txt().includes('Start at') && txt().includes('Volume');
   });
   await t('music volume adjustable via selected track', async()=>{
     const rng=[...w.document.querySelectorAll('input[type="range"]')];
@@ -47,7 +47,8 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
   });
   await t('switching back controls original audio', async()=>{
     tap('Original audio'); await wait(350);
-    if(!txt().includes('Original volume')) return false;
+    if(txt().includes('Start at')) return false;      // music-only control must collapse
+    if(!txt().includes('Volume')) return false;
     return tap('50%') && (await wait(350), txt().includes('50%'));
   });
   await t('each track keeps its own level', ()=> txt().includes('35%') && txt().includes('50%'));

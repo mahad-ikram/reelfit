@@ -22,11 +22,11 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
   // ---------- SPLASH proportions ----------
   await wait(300);
   const imgs=()=>[...w.document.querySelectorAll('img')].map(i=>i.getAttribute('style')||'');
-  await t('splash: PursTech enlarged to 34%', ()=> imgs().some(s=>s.includes('width: 34%')));
+  await t('splash: PursTech enlarged to 40%', ()=> imgs().some(s=>s.includes('width: 40%')));
   await t('splash: icon 25% / wordmark 46%', ()=> imgs().some(s=>s.includes('width: 25%')) && imgs().some(s=>s.includes('width: 46%')));
   await t('splash: caption smaller than logo', ()=>{
     const cap=all().filter(x=>x.tagName==='SPAN'&&(x.textContent||'').trim()==='Powered By').pop();
-    return cap && (cap.getAttribute('style')||'').includes('font-size: 9px');
+    return cap && (cap.getAttribute('style')||'').includes('font-size: 10.5px');
   });
   await wait(2200);
 

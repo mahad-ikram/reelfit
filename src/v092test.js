@@ -40,7 +40,7 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
     return (byTitle('Undo').getAttribute('style')||'').includes('opacity: 1'); });
   await t('undo works on border colour', async()=>{
     tap('Border'); await wait(350);
-    const sw=all().filter(x=>x.tagName==='BUTTON'&&(x.getAttribute('style')||'').includes('width: 26px')&&(x.getAttribute('style')||'').includes('rgb(61, 220, 151)'));
+    const sw=all().filter(x=>{const st=x.getAttribute('style')||''; return x.tagName==='BUTTON'&&st.includes('width: 26px')&&st.includes('rgb(61, 220, 151)')&&!st.includes('conic-gradient');});
     if(!sw.length) return false;
     const n0=(html().match(/rgb\(61, 220, 151\)/g)||[]).length;   // just the swatch
     click(sw[0]); await wait(600);
