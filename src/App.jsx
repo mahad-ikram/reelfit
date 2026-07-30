@@ -1296,14 +1296,15 @@ function HomeScreen({
               fontSize: 12,
               color: d.bone
             }}>{"Pro"}</span></button></div></div><div style={{
-        fontFamily: L.serif,
-        fontStyle: "italic",
-        fontWeight: 600,
-        fontSize: 28,
-        lineHeight: 1.16,
-        letterSpacing: "-0.01em",
+        fontFamily: L.sans,
+        fontWeight: 800,
+        fontSize: 31,
+        lineHeight: 1.1,
+        letterSpacing: "-0.035em",
         color: d.bone
-      }}>{"Make any video fit"}<br />{"any platform."}</div><button ref={n} onClick={() => e("import")} style={{
+      }}>{"Make any video fit"}<br /><span style={{
+        color: d.voltSoft
+      }}>{"any platform."}</span></div><button ref={n} onClick={() => e("import")} style={{
         marginTop: 16,
         width: "100%",
         padding: 15,
@@ -1672,6 +1673,34 @@ function Editor({
     [mVol, sMVol] = useState(60),
     [aSel, sASel] = useState("orig"),
     [mStart, sMStart] = useState(0),
+    [vPath, sVPath] = useState(null),
+    [vDur, sVDur] = useState(0),
+    [vVol, sVVol] = useState(100),
+    [rec, sRec] = useState(!1),
+    [recMs, sRecMs] = useState(0),
+    recTmr = useRef(null),
+    RFX = () => window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ReelfitExport,
+    startVoice = () => {
+      let P = RFX();
+      if (!P || !P.startVoice) {
+        Is("Update the app to record a voiceover");
+        return;
+      }
+      P.startVoice().then(() => {
+        sRec(!0), sRecMs(0), clearInterval(recTmr.current), recTmr.current = setInterval(() => sRecMs(v => v + 100), 100);
+      }).catch(k => Is(k && k.message ? k.message : "Could not start recording"));
+    },
+    stopVoice = () => {
+      let P = RFX();
+      clearInterval(recTmr.current), sRec(!1);
+      P && P.stopVoice ? P.stopVoice().then(k => {
+        k && k.path && (sVPath(k.path), sVDur(k.durationMs || 0), sASel("voice"));
+      }).catch(k => Is(k && k.message ? k.message : "Recording failed")) : null;
+    },
+    dropVoice = () => {
+      let P = RFX();
+      P && P.cancelVoice && P.cancelVoice().catch(() => {}), sVPath(null), sVDur(0), sASel("orig");
+    },
     panelRef = useRef(null),
     [panelBar, sPanelBar] = useState(null),
     panelCheck = () => {
@@ -1728,11 +1757,14 @@ function Editor({
       mName,
       mDur,
       mVol,
-      mStart
+      mStart,
+      vPath,
+      vDur,
+      vVol
     }),
     applySnap = ss => {
       hist.current.applying = !0;
-      f(ss.i), h(ss.g), I(ss.x), A(ss.S), p(ss.M), m(ss.c), F(ss.y), B(ss.w), q(ss.T), oe(ss.E), Te(ss.K), C(ss.xt), te(ss.N), $(ss.U), ue(ss.b), wc(ss.kc), sTxs(ss.txs), sTsel(ss.tsel), sMPath(ss.mPath), sMName(ss.mName), sMDur(ss.mDur), sMVol(ss.mVol), sMStart(ss.mStart || 0), sHv(v => v + 1);
+      f(ss.i), h(ss.g), I(ss.x), A(ss.S), p(ss.M), m(ss.c), F(ss.y), B(ss.w), q(ss.T), oe(ss.E), Te(ss.K), C(ss.xt), te(ss.N), $(ss.U), ue(ss.b), wc(ss.kc), sTxs(ss.txs), sTsel(ss.tsel), sMPath(ss.mPath), sMName(ss.mName), sMDur(ss.mDur), sMVol(ss.mVol), sMStart(ss.mStart || 0), sVPath(ss.vPath || null), sVDur(ss.vDur || 0), sVVol(ss.vVol == null ? 100 : ss.vVol), sHv(v => v + 1);
     },
     canUndo = hist.current.past.length > 1,
     canRedo = hist.current.future.length > 0,
@@ -1746,6 +1778,7 @@ function Editor({
       let ss = h0.future.pop();
       h0.past.push(ss), applySnap(ss);
     };
+  useEffect(() => () => clearInterval(recTmr.current), []);
   useEffect(() => {
     panelCheck();
     let t1 = setTimeout(panelCheck, 120),
@@ -1767,7 +1800,7 @@ function Editor({
       h0.past.length && JSON.stringify(h0.past[h0.past.length - 1]) === js || (h0.past.push(ss), h0.past.length > 40 && h0.past.shift(), h0.future = [], sHv(v => v + 1));
     }, 340);
     return () => clearTimeout(h0.tmr);
-  }, [i, g, x, S, M, c, y, w, T, E, K, xt, N, U, b, kc, tsel, txs, mPath, mName, mDur, mVol, mStart]);
+  }, [i, g, x, S, M, c, y, w, T, E, K, xt, N, U, b, kc, tsel, txs, mPath, mName, mDur, mVol, mStart, vPath, vVol]);
   Ls.current = {
     colorSheet: gs,
     textSheet: hs,
@@ -2228,7 +2261,7 @@ function Editor({
           fontSize: 12,
           color: d.bone,
           cursor: "pointer"
-        }}><Music size={14} color={d.volt} />{" Add music"}</button>}<button onClick={() => Is("Voiceover recording is next \u2014 coming very soon")} style={{
+        }}><Music size={14} color={d.volt} />{" Add music"}</button>}<button onClick={rec ? stopVoice : startVoice} style={{
           flex: mPath ? "0 0 auto" : 1,
           display: "flex",
           alignItems: "center",
@@ -2243,20 +2276,19 @@ function Editor({
           fontSize: 12,
           color: d.bone,
           cursor: "pointer",
-          opacity: 0.8,
-          position: "relative"
-        }}><Volume2 size={14} color={d.volt} />{mPath ? "" : " Voiceover"}<span style={{
-            position: "absolute",
-            top: -6,
-            right: -4,
+          position: "relative",
+          borderColor: rec ? "#FF4D4D" : d.line2
+        }}>{rec ? <><span style={{
+            width: 8,
+            height: 8,
+            borderRadius: 999,
+            background: "#FF4D4D",
+            flex: "0 0 auto"
+          }} /><span style={{
             fontFamily: L.mono,
-            fontSize: 7,
-            fontWeight: 700,
-            color: "#fff",
-            background: d.volt,
-            borderRadius: 4,
-            padding: "1px 3px"
-          }}>{"SOON"}</span></button></div><div style={{
+            fontSize: 11.5,
+            color: "#FF6B6B"
+          }}>{Math.floor(recMs / 1e3) + "." + Math.floor(recMs % 1e3 / 100) + "s"}</span><span>{"Stop"}</span></> : <><Volume2 size={14} color={d.volt} />{mPath ? "" : " Voiceover"}</>}</button></div><div style={{
           display: "flex",
           flexDirection: "column",
           gap: 6,
@@ -2271,11 +2303,16 @@ function Editor({
           l: mName || "Music track",
           v: mVol,
           Ic0: Music
+        }] : []).concat(vPath ? [{
+          k: "voice",
+          l: "Voiceover \u00B7 " + (vDur / 1e3).toFixed(1) + "s",
+          v: vVol,
+          Ic0: Volume2
         }] : []).map(tr => {
           let on = aSel === tr.k,
             Ic1 = tr.Ic0,
-            val = tr.k === "music" ? mVol : b,
-            setVal = tr.k === "music" ? sMVol : ue;
+            val = tr.k === "music" ? mVol : tr.k === "voice" ? vVol : b,
+            setVal = tr.k === "music" ? sMVol : tr.k === "voice" ? sVVol : ue;
           return <div key={tr.k} style={{
             marginBottom: 7,
             borderRadius: 12,
@@ -2346,7 +2383,21 @@ function Editor({
                   fontWeight: 700,
                   color: d.mutedHi,
                   cursor: "pointer"
-                }}><X size={11} color={d.mutedHi} />{"Remove"}</button>}</div>{tr.k === "music" && mDur > 4000 && <Slider label="Start at" min={0} max={Math.max(1000, mDur - 3000)} value={mStart} onChange={sMStart} valLabel={Math.floor(mStart / 6e4) + ":" + String(Math.floor(mStart / 1e3) % 60).padStart(2, "0")} />}</div>}</div>;
+                }}><X size={11} color={d.mutedHi} />{"Remove"}</button>}{tr.k === "voice" && <button onClick={dropVoice} style={{
+                  marginLeft: "auto",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  background: "none",
+                  border: `1px solid ${d.line2}`,
+                  borderRadius: 999,
+                  padding: "5px 10px",
+                  fontFamily: L.sans,
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  color: d.mutedHi,
+                  cursor: "pointer"
+                }}><X size={11} color={d.mutedHi} />{"Delete"}</button>}</div>{tr.k === "music" && mDur > 4000 && <Slider label="Start at" min={0} max={Math.max(1000, mDur - 3000)} value={mStart} onChange={sMStart} valLabel={Math.floor(mStart / 6e4) + ":" + String(Math.floor(mStart / 1e3) % 60).padStart(2, "0")} />}</div>}</div>;
         })}</div>{b === 0 && !mPath && <div style={{
           fontFamily: L.sans,
           fontSize: 11,
@@ -2658,6 +2709,8 @@ function Editor({
       musicPath: mPath,
       musicVolume: mVol / 100,
       musicStartMs: mStart,
+      voicePath: vPath,
+      voiceVolume: vVol / 100,
       texts: txs.filter(oo => oo && oo.value && oo.value.trim()),
       text: j ? {
         value: Lt,
@@ -3239,7 +3292,7 @@ function About({
         fontFamily: L.mono,
         fontSize: 9.5,
         color: "rgba(139,135,152,0.6)"
-      }}>{"Reelfit v1.0.2 · Audio UX · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
+      }}>{"Reelfit v1.1.0 · Voiceover · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
 }
 function TopBar({
   title: e,
@@ -3824,7 +3877,7 @@ function App() {
             radiusFrac: (C.radius || 0) / 244,
             borderColor: C.borderColor || "#FFFFFF"
           };
-          if (C.musicPath && (b.musicPath = C.musicPath, b.musicVolume = C.musicVolume == null ? 0.6 : C.musicVolume, b.musicStartMs = C.musicStartMs || 0, b.musicClipMs = Math.max(500, Math.round((M.durationMs || 0) * ((C.trim && C.trim[1] != null ? C.trim[1] : 100) - (C.trim && C.trim[0] != null ? C.trim[0] : 0)) / 100 / (C.speed || 1)))), j === "image" && (b.bgImage = C.bgImagePath), C.texts && C.texts.length) {
+          if (C.voicePath && (b.voicePath = C.voicePath, b.voiceVolume = C.voiceVolume == null ? 1 : C.voiceVolume), C.musicPath && (b.musicPath = C.musicPath, b.musicVolume = C.musicVolume == null ? 0.6 : C.musicVolume, b.musicStartMs = C.musicStartMs || 0, b.musicClipMs = Math.max(500, Math.round((M.durationMs || 0) * ((C.trim && C.trim[1] != null ? C.trim[1] : 100) - (C.trim && C.trim[0] != null ? C.trim[0] : 0)) / 100 / (C.speed || 1)))), j === "image" && (b.bgImage = C.bgImagePath), C.texts && C.texts.length) {
             b.texts = C.texts.map(tl => {
               let ue = Wt[tl.style] || Wt.Clean,
                 pp = tl.pos || {

@@ -30,15 +30,21 @@ import androidx.media3.transformer.ExportResult;
 import androidx.media3.transformer.ProgressHolder;
 import androidx.media3.transformer.Transformer;
 
+import android.Manifest;
+import android.media.MediaRecorder;
+
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
+import com.getcapacitor.PermissionState;
 import com.getcapacitor.PluginMethod;
 
 import org.json.JSONObject;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -50,7 +56,12 @@ import java.util.Collections;
 import java.util.List;
 
 @UnstableApi
-@CapacitorPlugin(name = "ReelfitExport")
+@CapacitorPlugin(
+        name = "ReelfitExport",
+        permissions = {
+                @Permission(strings = { Manifest.permission.RECORD_AUDIO }, alias = "microphone")
+        }
+)
 public class ReelfitExportPlugin extends Plugin {
 
     private Transformer activeTransformer;
@@ -58,6 +69,9 @@ public class ReelfitExportPlugin extends Plugin {
     private long exportStartMs;
     private Uri lastSavedUri;
     private long lastClipMs;
+    private MediaRecorder voiceRecorder;
+    private String voiceFilePath;
+    private long voiceStartMs;
 
     @PluginMethod
     public void pickAndExport(PluginCall call) {
@@ -90,6 +104,102 @@ public class ReelfitExportPlugin extends Plugin {
     }
 
     // ---------- v2 API: pick() then export() ----------
+
+    @PluginMethod
+    public void startVoice(PluginCall call) {
+        if (getPermissionState("microphone") != PermissionState.GRANTED) {
+            requestPermissionForAlias("microphone", call, "micPermCallback");
+        } else {
+            beginRecording(call);
+        }
+    }
+
+    @PermissionCallback
+    private void micPermCallback(PluginCall call) {
+        if (getPermissionState("microphone") == PermissionState.GRANTED) {
+            beginRecording(call);
+        } else {
+            call.reject("Microphone permission is needed to record a voiceover");
+        }
+    }
+
+    private void beginRecording(PluginCall call) {
+        releaseRecorder();
+        try {
+            File dir = getContext().getCacheDir();
+            File[] old = dir.listFiles();
+            if (old != null) {
+                for (File f : old) {
+                    if (f.getName().startsWith("reelfit_voice_")) f.delete();
+                }
+            }
+            File dst = new File(dir, "reelfit_voice_" + System.currentTimeMillis() + ".m4a");
+            MediaRecorder r = new MediaRecorder();
+            r.setAudioSource(MediaRecorder.AudioSource.MIC);
+            r.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+            r.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+            r.setAudioSamplingRate(44100);
+            r.setAudioEncodingBitRate(128000);
+            r.setOutputFile(dst.getAbsolutePath());
+            r.prepare();
+            r.start();
+            voiceRecorder = r;
+            voiceFilePath = dst.getAbsolutePath();
+            voiceStartMs = System.currentTimeMillis();
+            JSObject ret = new JSObject();
+            ret.put("recording", true);
+            call.resolve(ret);
+        } catch (Exception e) {
+            releaseRecorder();
+            call.reject("Could not start recording: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void stopVoice(PluginCall call) {
+        if (voiceRecorder == null) {
+            call.reject("Not recording");
+            return;
+        }
+        long dur = System.currentTimeMillis() - voiceStartMs;
+        try {
+            voiceRecorder.stop();
+        } catch (Exception ignored) {
+        }
+        releaseRecorder();
+        File f = voiceFilePath != null ? new File(voiceFilePath) : null;
+        if (f == null || !f.exists() || f.length() <= 0L) {
+            call.reject("Recording was too short");
+            return;
+        }
+        JSObject ret = new JSObject();
+        ret.put("path", voiceFilePath);
+        ret.put("durationMs", dur);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void cancelVoice(PluginCall call) {
+        try {
+            if (voiceRecorder != null) {
+                try { voiceRecorder.stop(); } catch (Exception ignored) {}
+            }
+        } finally {
+            releaseRecorder();
+        }
+        if (voiceFilePath != null) {
+            try { new File(voiceFilePath).delete(); } catch (Exception ignored) {}
+            voiceFilePath = null;
+        }
+        call.resolve();
+    }
+
+    private void releaseRecorder() {
+        if (voiceRecorder != null) {
+            try { voiceRecorder.release(); } catch (Exception ignored) {}
+            voiceRecorder = null;
+        }
+    }
 
     @PluginMethod
     public void pickAudio(PluginCall call) {
@@ -351,7 +461,9 @@ public class ReelfitExportPlugin extends Plugin {
         float musicVol = mvD != null ? mvD.floatValue() : 0.6f;
         final boolean hasMusic = musicPath != null && musicPath.length() > 0;
 
-        if (!removeAudio && hasMusic) {
+        String voicePathPre = call.getString("voicePath", null);
+        final boolean hasVoice = voicePathPre != null && voicePathPre.length() > 0;
+        if (!removeAudio && (hasMusic || hasVoice)) {
             // Mixing with music: force 16-bit stereo so both sequences match.
             addStereoGain(aud, Math.max(0f, Math.min(1f, volume / 100f)));
         } else if (!removeAudio && volume != 100) {
@@ -366,7 +478,10 @@ public class ReelfitExportPlugin extends Plugin {
         long musicClipMs = clipD != null ? (long) clipD.doubleValue() : 0L;
         Double startD = call.getDouble("musicStartMs");
         long musicStartMs = startD != null ? (long) startD.doubleValue() : 0L;
-        runTransform(call, mb.build(), fx, aud, removeAudio, musicPath, musicVol, musicClipMs, musicStartMs);
+        String voicePath = call.getString("voicePath", null);
+        Double vvD = call.getDouble("voiceVolume");
+        float voiceVol = vvD != null ? vvD.floatValue() : 1f;
+        runTransform(call, mb.build(), fx, aud, removeAudio, musicPath, musicVol, musicClipMs, musicStartMs, voicePath, voiceVol);
     }
 
     /**
@@ -381,11 +496,50 @@ public class ReelfitExportPlugin extends Plugin {
         out.add(mixer);
     }
 
-    private void runTransform(final PluginCall call, final MediaItem mediaItem, final List<Effect> videoFx, final List<AudioProcessor> audioFx, final boolean removeAudio) {
-        runTransform(call, mediaItem, videoFx, audioFx, removeAudio, null, 1f, 0L, 0L);
+    /** Builds an audio-only sequence clipped to the video length, mirroring Media3's sample. */
+    private static EditedMediaItemSequence audioSequence(String path, float vol, long clipMs, long startMs) {
+        long durUs = 0L;
+        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+        try {
+            mmr.setDataSource(path);
+            String dv = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+            if (dv != null) durUs = Long.parseLong(dv) * 1000L;
+        } catch (Exception ignored) {
+        } finally {
+            try { mmr.release(); } catch (Exception ignored) {}
+        }
+        if (durUs <= 0L) durUs = 60_000_000L;
+        long trackMs = durUs / 1000L;
+
+        long from = Math.max(0L, startMs);
+        if (from > Math.max(0L, trackMs - 1000L)) from = Math.max(0L, trackMs - 1000L);
+        long len = clipMs >= 1000L ? clipMs : trackMs;
+        long to = from + len;
+        if (to > trackMs) to = trackMs;
+
+        List<AudioProcessor> fx = new ArrayList<AudioProcessor>();
+        addStereoGain(fx, Math.max(0f, Math.min(1f, vol)));
+
+        MediaItem mi = new MediaItem.Builder()
+                .setUri(Uri.fromFile(new File(path)))
+                .setClippingConfiguration(
+                        new MediaItem.ClippingConfiguration.Builder()
+                                .setStartPositionMs(from)
+                                .setEndPositionMs(to)
+                                .build())
+                .build();
+        EditedMediaItem item = new EditedMediaItem.Builder(mi)
+                .setEffects(new Effects(fx, new ArrayList<Effect>()))
+                .setDurationUs(durUs)
+                .build();
+        return new EditedMediaItemSequence.Builder(item).build();
     }
 
-    private void runTransform(final PluginCall call, final MediaItem mediaItem, final List<Effect> videoFx, final List<AudioProcessor> audioFx, final boolean removeAudio, final String musicPath, final float musicVolume, final long musicClipMs, final long musicStartMs) {
+    private void runTransform(final PluginCall call, final MediaItem mediaItem, final List<Effect> videoFx, final List<AudioProcessor> audioFx, final boolean removeAudio) {
+        runTransform(call, mediaItem, videoFx, audioFx, removeAudio, null, 1f, 0L, 0L, null, 1f);
+    }
+
+    private void runTransform(final PluginCall call, final MediaItem mediaItem, final List<Effect> videoFx, final List<AudioProcessor> audioFx, final boolean removeAudio, final String musicPath, final float musicVolume, final long musicClipMs, final long musicStartMs, final String voicePath, final float voiceVolume) {
         final File outFile = new File(getContext().getCacheDir(),
                 "reelfit_" + System.currentTimeMillis() + ".mp4");
 
@@ -396,6 +550,8 @@ public class ReelfitExportPlugin extends Plugin {
                 final boolean musicOnDisk = musicGiven && new File(musicPath).exists();
                 final long musicBytes = musicOnDisk ? new File(musicPath).length() : -1L;
                 final boolean useMusic = musicOnDisk && musicBytes > 0L;
+                final boolean useVoice = voicePath != null && voicePath.length() > 0
+                        && new File(voicePath).exists() && new File(voicePath).length() > 0L;
                 try {
                     Effects effects = new Effects(
                             audioFx,
@@ -418,7 +574,7 @@ public class ReelfitExportPlugin extends Plugin {
                                     }
                                     JSObject ret = new JSObject();
                                     ret.put("saved", saved);
-                                    ret.put("mixMode", useMusic ? "composition" : "single");
+                                    ret.put("mixMode", useMusic || useVoice ? "composition" : "single");
                                     ret.put("musicGiven", musicGiven);
                                     ret.put("musicOnDisk", musicOnDisk);
                                     ret.put("musicBytes", musicBytes);
@@ -454,55 +610,18 @@ public class ReelfitExportPlugin extends Plugin {
                     activeTransformer = transformer;
                     exportStartMs = System.currentTimeMillis();
 
-                    if (useMusic) {
-                        // Mirrors Media3's own background-audio sample: clip the track to the
-                        // video length and give the item an explicit duration. No looping, and
-                        // no setRemoveVideo (the file is already audio-only).
-                        List<AudioProcessor> musicFx = new ArrayList<AudioProcessor>();
-                        float mv = Math.max(0f, Math.min(1f, musicVolume));
-                        addStereoGain(musicFx, mv);
-
-                        long musicDurUs = 0L;
-                        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-                        try {
-                            mmr.setDataSource(musicPath);
-                            String dv = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
-                            if (dv != null) musicDurUs = Long.parseLong(dv) * 1000L;
-                        } catch (Exception ignored) {
-                        } finally {
-                            try { mmr.release(); } catch (Exception ignored) {}
+                    if (useMusic || useVoice) {
+                        long clipMs = musicClipMs;
+                        List<EditedMediaItemSequence> seqs = new ArrayList<EditedMediaItemSequence>();
+                        seqs.add(new EditedMediaItemSequence.Builder(item).build());
+                        if (useMusic) {
+                            seqs.add(audioSequence(musicPath, musicVolume, clipMs, musicStartMs));
                         }
-                        if (musicDurUs <= 0L) musicDurUs = 60_000_000L;
-
-                        long clipMs = musicClipMs >= 1000L ? musicClipMs : (musicDurUs / 1000L);
-                        if (clipMs > musicDurUs / 1000L) clipMs = musicDurUs / 1000L;
-                        if (clipMs < 1000L) clipMs = musicDurUs / 1000L;
+                        if (useVoice) {
+                            seqs.add(audioSequence(voicePath, voiceVolume, clipMs, 0L));
+                        }
                         lastClipMs = clipMs;
-
-                        // Start the track wherever the user dragged to, then take the clip length.
-                        long startMs = Math.max(0L, musicStartMs);
-                        long trackMs = musicDurUs / 1000L;
-                        if (startMs > Math.max(0L, trackMs - 1000L)) startMs = Math.max(0L, trackMs - 1000L);
-                        long endMs = startMs + clipMs;
-                        if (endMs > trackMs) endMs = trackMs;
-                        MediaItem musicMedia = new MediaItem.Builder()
-                                .setUri(Uri.fromFile(new File(musicPath)))
-                                .setClippingConfiguration(
-                                        new MediaItem.ClippingConfiguration.Builder()
-                                                .setStartPositionMs(startMs)
-                                                .setEndPositionMs(endMs)
-                                                .build())
-                                .build();
-                        EditedMediaItem musicItem = new EditedMediaItem.Builder(musicMedia)
-                                .setEffects(new Effects(musicFx, new ArrayList<Effect>()))
-                                .setDurationUs(musicDurUs)
-                                .build();
-
-                        EditedMediaItemSequence videoSeq = new EditedMediaItemSequence.Builder(item).build();
-                        EditedMediaItemSequence musicSeq = new EditedMediaItemSequence.Builder(musicItem).build();
-                        // Force an audio track whenever music is present: without it Transformer
-                        // can transmux (straight-copy) the source audio and never run the mixer.
-                        Composition composition = new Composition.Builder(videoSeq, musicSeq)
+                        Composition composition = new Composition.Builder(seqs)
                                 .experimentalSetForceAudioTrack(true)
                                 .setTransmuxAudio(false)
                                 .build();
