@@ -50,11 +50,22 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
   });
   await t('music + voiceover coexist', async()=>{ tapHas('Add music'); await wait(600);
     return txt().includes('Knockout') && txt().includes('Voiceover'); });
-  await t('export sends voicePath + voiceVolume', async()=>{
+  await t('voiceover plays in the preview (audio element present)', ()=>{
+    const auds=[...w.document.querySelectorAll('audio')].map(a=>a.getAttribute('src')||'');
+    return auds.some(x=>x.includes('voice.m4a')) && auds.some(x=>x.includes('track.mp3'));
+  });
+  await t('duck toggle appears once a voiceover exists', async()=>{
+    tapHas('Knockout'); await wait(350);
+    return txt().includes('Duck under voice') && txt().includes('drops to 30%');
+  });
+  await t('ducking lowers the exported music level', async()=>{
     tap('Export'); await wait(600);
     const b=all().filter(x=>x.tagName==='BUTTON'&&(x.textContent||'').includes('Export 1080p'));
     if(b.length) b[b.length-1].dispatchEvent(new w.MouseEvent('click',{bubbles:true}));
     await wait(1000);
+    return captured && Math.abs(captured.musicVolume-0.6*0.3)<0.01;
+  });
+  await t('export sends voicePath + voiceVolume', async()=>{
     return captured && captured.voicePath==='/v/voice.m4a' && Math.abs(captured.voiceVolume-0.7)<0.001 && captured.musicPath==='/m/track.mp3';
   });
   console.log('  '+'-'.repeat(48)); console.log(`  PASSED: ${pass}   FAILED: ${fail}`);

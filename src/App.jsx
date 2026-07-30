@@ -602,6 +602,8 @@ function Preview({
   musicSrc: MSRC,
   musicVol: MVOL,
   musicStart: MSTART,
+  voiceSrc: VSRC,
+  voiceVol: VVOL,
   onTextMove: M,
   onTextSelect: OS,
   trim: c,
@@ -625,12 +627,15 @@ function Preview({
     N = `brightness(${s.b}) contrast(${s.c}) saturate(${s.s}) ${i}`,
     te = useRef(null),
     mAud = useRef(null),
+    vAud = useRef(null),
     mCfg = useRef({}),
     j = useRef(!1);
   mCfg.current = {
     src: MSRC,
     vol: MVOL,
-    start: MSTART
+    start: MSTART,
+    vsrc: VSRC,
+    vvol: VVOL
   };
   useEffect(() => {
     let ae = mAud.current;
@@ -641,6 +646,15 @@ function Preview({
       } else ae.pause();
     }
   }, [MSRC, MVOL]);
+  useEffect(() => {
+    let ve = vAud.current;
+    if (ve) {
+      if (VSRC) {
+        ve.volume = Math.max(0, Math.min(1, (VVOL == null ? 100 : VVOL) / 100));
+        ve.play().catch(() => {});
+      } else ve.pause();
+    }
+  }, [VSRC, VVOL]);
   return <div ref={te} style={{
     width: q,
     height: E,
@@ -700,6 +714,7 @@ function Preview({
             $ = parseFloat(z.dataset.te);
           (z.currentTime < U - 0.25 || z.currentTime > $) && (z.currentTime = U);
           let ae = mAud.current,
+            ve = vAud.current,
             cf = mCfg.current;
           if (ae && cf.src) {
             ae.volume = Math.max(0, Math.min(1, (cf.vol == null ? 60 : cf.vol) / 100));
@@ -707,6 +722,13 @@ function Preview({
             ae.duration && want > ae.duration && (want %= ae.duration);
             Math.abs(ae.currentTime - want) > 0.35 && (ae.currentTime = Math.max(0, want));
             z.paused ? ae.paused || ae.pause() : ae.paused && ae.play().catch(() => {});
+          }
+          if (ve && cf.vsrc) {
+            ve.volume = Math.max(0, Math.min(1, (cf.vvol == null ? 100 : cf.vvol) / 100));
+            let vw = z.currentTime - U;
+            ve.duration && vw > ve.duration && (vw %= ve.duration);
+            Math.abs(ve.currentTime - vw) > 0.35 && (ve.currentTime = Math.max(0, vw));
+            z.paused ? ve.paused || ve.pause() : ve.paused && ve.play().catch(() => {});
           }
         }), z.addEventListener("loadeddata", () => {
           try {
@@ -729,6 +751,12 @@ function Preview({
         alignItems: "center",
         justifyContent: "center"
       }}><Play size={15} color="#fff" fill="#fff" /></div>}{MSRC && <audio ref={mAud} src={MSRC} loop={!0} preload="auto" playsInline={!0} style={{
+        position: "absolute",
+        width: 0,
+        height: 0,
+        opacity: 0,
+        pointerEvents: "none"
+      }} />}{VSRC && <audio ref={vAud} src={VSRC} preload="auto" playsInline={!0} style={{
         position: "absolute",
         width: 0,
         height: 0,
@@ -1676,6 +1704,7 @@ function Editor({
     [vPath, sVPath] = useState(null),
     [vDur, sVDur] = useState(0),
     [vVol, sVVol] = useState(100),
+    [duck, sDuck] = useState(!0),
     [rec, sRec] = useState(!1),
     [recMs, sRecMs] = useState(0),
     recTmr = useRef(null),
@@ -1758,13 +1787,14 @@ function Editor({
       mDur,
       mVol,
       mStart,
+      duck,
       vPath,
       vDur,
       vVol
     }),
     applySnap = ss => {
       hist.current.applying = !0;
-      f(ss.i), h(ss.g), I(ss.x), A(ss.S), p(ss.M), m(ss.c), F(ss.y), B(ss.w), q(ss.T), oe(ss.E), Te(ss.K), C(ss.xt), te(ss.N), $(ss.U), ue(ss.b), wc(ss.kc), sTxs(ss.txs), sTsel(ss.tsel), sMPath(ss.mPath), sMName(ss.mName), sMDur(ss.mDur), sMVol(ss.mVol), sMStart(ss.mStart || 0), sVPath(ss.vPath || null), sVDur(ss.vDur || 0), sVVol(ss.vVol == null ? 100 : ss.vVol), sHv(v => v + 1);
+      f(ss.i), h(ss.g), I(ss.x), A(ss.S), p(ss.M), m(ss.c), F(ss.y), B(ss.w), q(ss.T), oe(ss.E), Te(ss.K), C(ss.xt), te(ss.N), $(ss.U), ue(ss.b), wc(ss.kc), sTxs(ss.txs), sTsel(ss.tsel), sMPath(ss.mPath), sMName(ss.mName), sMDur(ss.mDur), sMVol(ss.mVol), sMStart(ss.mStart || 0), sDuck(ss.duck !== !1), sVPath(ss.vPath || null), sVDur(ss.vDur || 0), sVVol(ss.vVol == null ? 100 : ss.vVol), sHv(v => v + 1);
     },
     canUndo = hist.current.past.length > 1,
     canRedo = hist.current.future.length > 0,
@@ -1800,7 +1830,7 @@ function Editor({
       h0.past.length && JSON.stringify(h0.past[h0.past.length - 1]) === js || (h0.past.push(ss), h0.past.length > 40 && h0.past.shift(), h0.future = [], sHv(v => v + 1));
     }, 340);
     return () => clearTimeout(h0.tmr);
-  }, [i, g, x, S, M, c, y, w, T, E, K, xt, N, U, b, kc, tsel, txs, mPath, mName, mDur, mVol, mStart, vPath, vVol]);
+  }, [i, g, x, S, M, c, y, w, T, E, K, xt, N, U, b, kc, tsel, txs, mPath, mName, mDur, mVol, mStart, vPath, vVol, duck]);
   Ls.current = {
     colorSheet: gs,
     textSheet: hs,
@@ -1926,7 +1956,7 @@ function Editor({
       justifyContent: "center",
       background: "radial-gradient(80% 60% at 50% 40%, #14141f, #0A0A14)",
       minHeight: 0
-    }}><Preview musicSrc={mPath ? window.Capacitor && window.Capacitor.convertFileSrc ? window.Capacitor.convertFileSrc(mPath) : mPath : null} musicVol={mVol} musicStart={mStart} ratio={i} bgType={g ? "black" : S} bgColor={M} bgImage={c} blurAmt={y} fill={g} scale={x / 100} adj={{
+    }}><Preview voiceSrc={vPath ? window.Capacitor && window.Capacitor.convertFileSrc ? window.Capacitor.convertFileSrc(vPath) : vPath : null} voiceVol={vVol} musicSrc={mPath ? window.Capacitor && window.Capacitor.convertFileSrc ? window.Capacitor.convertFileSrc(mPath) : mPath : null} musicVol={vPath && duck ? Math.round(mVol * 0.3) : mVol} musicStart={mStart} ratio={i} bgType={g ? "black" : S} bgColor={M} bgImage={c} blurAmt={y} fill={g} scale={x / 100} adj={{
         b: w.b / 100,
         c: w.c / 100,
         s: w.s / 100
@@ -2397,7 +2427,50 @@ function Editor({
                   fontWeight: 700,
                   color: d.mutedHi,
                   cursor: "pointer"
-                }}><X size={11} color={d.mutedHi} />{"Delete"}</button>}</div>{tr.k === "music" && mDur > 4000 && <Slider label="Start at" min={0} max={Math.max(1000, mDur - 3000)} value={mStart} onChange={sMStart} valLabel={Math.floor(mStart / 6e4) + ":" + String(Math.floor(mStart / 1e3) % 60).padStart(2, "0")} />}</div>}</div>;
+                }}><X size={11} color={d.mutedHi} />{"Delete"}</button>}</div>{tr.k === "music" && vPath && <button onClick={() => sDuck(!duck)} style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                background: "none",
+                border: `1px solid ${duck ? d.volt : d.line2}`,
+                borderRadius: 10,
+                padding: "8px 10px",
+                marginBottom: 8,
+                cursor: "pointer",
+                textAlign: "left"
+              }}><span style={{
+                  width: 30,
+                  height: 17,
+                  borderRadius: 999,
+                  flex: "0 0 auto",
+                  background: duck ? d.volt : "rgba(255,255,255,0.14)",
+                  position: "relative",
+                  transition: "background .15s"
+                }}><span style={{
+                    position: "absolute",
+                    top: 2,
+                    left: duck ? 15 : 2,
+                    width: 13,
+                    height: 13,
+                    borderRadius: 999,
+                    background: "#fff",
+                    transition: "left .15s"
+                  }} /></span><span style={{
+                  flex: 1
+                }}><span style={{
+                    display: "block",
+                    fontFamily: L.sans,
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    color: d.bone
+                  }}>{"Duck under voice"}</span><span style={{
+                    display: "block",
+                    fontFamily: L.sans,
+                    fontSize: 10,
+                    color: d.muted,
+                    marginTop: 1
+                  }}>{duck ? "Music drops to 30% so the voice stays clear" : "Music plays at full level"}</span></span></button>}{tr.k === "music" && mDur > 4000 && <Slider label="Start at" min={0} max={Math.max(1000, mDur - 3000)} value={mStart} onChange={sMStart} valLabel={Math.floor(mStart / 6e4) + ":" + String(Math.floor(mStart / 1e3) % 60).padStart(2, "0")} />}</div>}</div>;
         })}</div>{b === 0 && !mPath && <div style={{
           fontFamily: L.sans,
           fontSize: 11,
@@ -2707,7 +2780,7 @@ function Editor({
       radius: N,
       bgImagePath: kc,
       musicPath: mPath,
-      musicVolume: mVol / 100,
+      musicVolume: (vPath && duck ? mVol * 0.3 : mVol) / 100,
       musicStartMs: mStart,
       voicePath: vPath,
       voiceVolume: vVol / 100,
@@ -3292,7 +3365,7 @@ function About({
         fontFamily: L.mono,
         fontSize: 9.5,
         color: "rgba(139,135,152,0.6)"
-      }}>{"Reelfit v1.1.0 · Voiceover · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
+      }}>{"Reelfit v1.1.1 · Voice preview + ducking · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
 }
 function TopBar({
   title: e,
