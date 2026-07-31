@@ -51,6 +51,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -104,6 +106,118 @@ public class ReelfitExportPlugin extends Plugin {
     }
 
     // ---------- v2 API: pick() then export() ----------
+
+    /** Keeps at most this many library tracks on disk; oldest is evicted first. */
+    private static final int LIB_CACHE_MAX = 3;
+
+    /**
+     * Downloads a library track into the cache and returns its local path.
+     * Already-cached tracks are returned immediately so re-use costs no data.
+     */
+    @PluginMethod
+    public void downloadAudio(final PluginCall call) {
+        final String url = call.getString("url", null);
+        final String id = call.getString("id", null);
+        if (url == null || url.length() == 0 || id == null || id.length() == 0) {
+            call.reject("Missing url or id");
+            return;
+        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                HttpURLConnection conn = null;
+                InputStream in = null;
+                OutputStream out = null;
+                File dst = null;
+                try {
+                    File dir = getContext().getCacheDir();
+                    String safe = id.replaceAll("[^A-Za-z0-9_-]", "_");
+                    dst = new File(dir, "reelfit_lib_" + safe + ".mp3");
+
+                    if (dst.exists() && dst.length() > 0L) {
+                        dst.setLastModified(System.currentTimeMillis());
+                        call.resolve(audioInfo(dst, true));
+                        return;
+                    }
+
+                    conn = (HttpURLConnection) new URL(url).openConnection();
+                    conn.setConnectTimeout(15000);
+                    conn.setReadTimeout(30000);
+                    conn.setInstanceFollowRedirects(true);
+                    conn.connect();
+                    int code = conn.getResponseCode();
+                    if (code < 200 || code >= 300) {
+                        call.reject("Download failed (" + code + ")");
+                        return;
+                    }
+                    File tmp = new File(dir, dst.getName() + ".part");
+                    in = conn.getInputStream();
+                    out = new FileOutputStream(tmp);
+                    byte[] buf = new byte[65536];
+                    int n;
+                    while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                    out.flush();
+                    out.close();
+                    out = null;
+                    if (!tmp.renameTo(dst)) {
+                        call.reject("Could not save the track");
+                        return;
+                    }
+                    evictOldLibraryTracks(dir);
+                    call.resolve(audioInfo(dst, false));
+                } catch (Exception e) {
+                    if (dst != null) {
+                        try { new File(dst.getAbsolutePath() + ".part").delete(); } catch (Exception ignored) {}
+                    }
+                    call.reject("Could not download that track: " + e.getMessage());
+                } finally {
+                    try { if (in != null) in.close(); } catch (Exception ignored) {}
+                    try { if (out != null) out.close(); } catch (Exception ignored) {}
+                    if (conn != null) conn.disconnect();
+                }
+            }
+        }).start();
+    }
+
+    private JSObject audioInfo(File f, boolean cached) {
+        long durMs = 0L;
+        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+        try {
+            mmr.setDataSource(f.getAbsolutePath());
+            String dv = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+            if (dv != null) durMs = Long.parseLong(dv);
+        } catch (Exception ignored) {
+        } finally {
+            try { mmr.release(); } catch (Exception ignored) {}
+        }
+        JSObject ret = new JSObject();
+        ret.put("path", f.getAbsolutePath());
+        ret.put("durationMs", durMs);
+        ret.put("bytes", f.length());
+        ret.put("cached", cached);
+        return ret;
+    }
+
+    private void evictOldLibraryTracks(File dir) {
+        try {
+            File[] all = dir.listFiles();
+            if (all == null) return;
+            List<File> libs = new ArrayList<File>();
+            for (File f : all) {
+                if (f.getName().startsWith("reelfit_lib_") && f.getName().endsWith(".mp3")) libs.add(f);
+            }
+            while (libs.size() > LIB_CACHE_MAX) {
+                File oldest = null;
+                for (File f : libs) {
+                    if (oldest == null || f.lastModified() < oldest.lastModified()) oldest = f;
+                }
+                if (oldest == null) break;
+                libs.remove(oldest);
+                oldest.delete();
+            }
+        } catch (Exception ignored) {
+        }
+    }
 
     @PluginMethod
     public void startVoice(PluginCall call) {

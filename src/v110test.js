@@ -48,7 +48,7 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
     st.call(target,'70'); target.dispatchEvent(new w.Event('input',{bubbles:true})); await wait(400);
     return txt().includes('70%');
   });
-  await t('music + voiceover coexist', async()=>{ tapHas('Add music'); await wait(600);
+  await t('music + voiceover coexist', async()=>{ tapHas('My files'); await wait(600);
     return txt().includes('Knockout') && txt().includes('Voiceover'); });
   await t('voiceover plays in the preview (audio element present)', ()=>{
     const auds=[...w.document.querySelectorAll('audio')].map(a=>a.getAttribute('src')||'');

@@ -28,7 +28,7 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
   await wait(2400);
   await t('reach Editor', async()=>{ tap('YouTube'); await wait(900); tap('YouTube'); await wait(1300); return txt().includes('Background'); });
   await t('no audio element before music', ()=> w.document.querySelectorAll('audio').length===0);
-  await t('add music', async()=>{ tap('Audio'); await wait(400); tapHas('Add music'); await wait(600); return txt().includes('Knockout'); });
+  await t('add music', async()=>{ tap('Audio'); await wait(400); tapHas('My files'); await wait(600); return txt().includes('Knockout'); });
   await t('preview gets a music audio element', ()=> w.document.querySelectorAll('audio').length===1);
   await t('audio src goes through convertFileSrc', ()=>{
     const a=w.document.querySelector('audio'); return a && (a.getAttribute('src')||'').startsWith('cap://');

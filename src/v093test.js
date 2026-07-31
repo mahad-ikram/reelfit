@@ -27,11 +27,11 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
 (async()=>{
   await wait(2400);
   await t('reach Editor', async()=>{ tap('YouTube'); await wait(900); tap('YouTube'); await wait(1300); return txt().includes('Background'); });
-  await t('Audio tab: Add music is real (no SOON badge on it)', async()=>{
+  await t('Audio tab: music sources are real (no SOON badge)', async()=>{
     tap('Audio'); await wait(400);
-    return txt().includes('Add music') && txt().includes('Original audio');
+    return txt().includes('My files') && txt().includes('Original audio');
   });
-  await t('picking music calls native pickAudio', async()=>{ tapHas('Add music'); await wait(500); return audioAsked===1; });
+  await t('picking music calls native pickAudio', async()=>{ tapHas('My files'); await wait(500); return audioAsked===1; });
   await t('track name + duration shown', ()=> txt().includes('Knockout') && txt().includes('187s'));
   await t('track bars show both audio tracks', ()=> txt().includes('Original audio') && txt().includes('Knockout'));
   await t('selecting Music track switches the slider', async()=>{
@@ -66,9 +66,9 @@ const t=async(n,fn)=>{const b=errs.length; let ok=false; try{ok=await fn();}catc
   await t('remove button clears music', async()=>{
     const x=byTitle('Remove music'); if(!x) return false;
     x.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await wait(480);
-    return !txt().includes('Knockout') && txt().includes('Add music');
+    return !txt().includes('Knockout') && txt().includes('My files');
   });
-  await t('can re-add music after removing', async()=>{ tapHas('Add music'); await wait(550);
+  await t('can re-add music after removing', async()=>{ tapHas('My files'); await wait(550);
     return audioAsked===2 && txt().includes('Knockout'); });
   await t('export payload carries musicPath + musicVolume', async()=>{
     tap('Export'); await wait(600);

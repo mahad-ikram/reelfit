@@ -31,6 +31,7 @@ var d = {
   _e = "radial-gradient(120% 90% at 20% 10%, #FF7A59 0%, rgba(255,122,89,0) 45%),radial-gradient(120% 120% at 90% 30%, #6C3AFF 0%, rgba(108,58,255,0) 50%),linear-gradient(135deg, #12203A 0%, #2B1D4E 55%, #3A1230 100%)",
   lg = ["#6C3AFF", "#0E0E16", "#F5F2EC", "#FF6B6B", "#FF9F45", "#FFD23F", "#3DDC97", "#22C3D6", "#4C6EF5", "#FF5CA8"],
   dc = ["linear-gradient(135deg,#F6D365,#FDA085)", "linear-gradient(135deg,#84FAB0,#8FD3F4)", "linear-gradient(135deg,#A18CD1,#FBC2EB)", "repeating-linear-gradient(45deg,#16162a,#16162a 9px,#20203a 9px,#20203a 18px)"],
+  MUSIC_MANIFEST = "https://cdn.purstech.com/reelfit/music/manifest.json",
   Wt = {
     Clean: {
       color: "#FFFFFF",
@@ -1705,6 +1706,32 @@ function Editor({
     [vDur, sVDur] = useState(0),
     [vVol, sVVol] = useState(100),
     [duck, sDuck] = useState(!0),
+    [lib, sLib] = useState(null),
+    [libState, sLibState] = useState("idle"),
+    [libBusy, sLibBusy] = useState(null),
+    openLibrary = () => {
+      if (sLibShow(!0), lib || libState === "loading") return;
+      sLibState("loading"), fetch(MUSIC_MANIFEST).then(k => k.json()).then(k => {
+        let ts = k && k.tracks && k.tracks.length ? k.tracks : null;
+        ts ? (sLib(ts), sLibState("ready")) : sLibState("empty");
+      }).catch(() => sLibState("offline"));
+    },
+    pickFromLibrary = tk => {
+      let P = RFX();
+      if (!P || !P.downloadAudio) {
+        Is("Update the app to use the library");
+        return;
+      }
+      sLibBusy(tk.id), P.downloadAudio({
+        url: tk.url,
+        id: tk.id
+      }).then(k => {
+        sLibBusy(null), k && k.path && (sMPath(k.path), sMName(tk.title || "Library track"), sMDur(k.durationMs || tk.durationMs || 0), sMStart(0), sLibShow(!1), sASel("music"));
+      }).catch(k => {
+        sLibBusy(null), Is(k && k.message ? k.message : "Could not download that track");
+      });
+    },
+    [libShow, sLibShow] = useState(!1),
     [rec, sRec] = useState(!1),
     [recMs, sRecMs] = useState(0),
     recTmr = useRef(null),
@@ -2291,7 +2318,22 @@ function Editor({
           fontSize: 12,
           color: d.bone,
           cursor: "pointer"
-        }}><Music size={14} color={d.volt} />{" Add music"}</button>}<button onClick={rec ? stopVoice : startVoice} style={{
+        }}><Music size={14} color={d.volt} />{" My files"}</button>}{!mPath && <button onClick={openLibrary} style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          background: d.voltDim,
+          border: `1px solid ${d.volt}`,
+          borderRadius: 10,
+          padding: "10px",
+          fontFamily: L.sans,
+          fontWeight: 700,
+          fontSize: 12,
+          color: d.bone,
+          cursor: "pointer"
+        }}><Sparkles size={14} color={d.volt} />{" Library"}</button>}<button onClick={rec ? stopVoice : startVoice} style={{
           flex: mPath ? "0 0 auto" : 1,
           display: "flex",
           alignItems: "center",
@@ -2792,7 +2834,94 @@ function Editor({
         pos: xs,
         scale: fr
       } : null
-    })} />}{gs && <ColorSheet initial={ctar === "text" ? tcol || "#FFFFFF" : ctar === "border" ? xt : M} title={ctar === "text" ? "Text colour" : ctar === "border" ? "Border colour" : "Background colour"} soft={ctar !== "bg"} onLive={ctar === "text" ? sTcol : ctar === "border" ? C : null} onCancel={() => {
+    })} />}{libShow && <div style={pc} onClick={() => sLibShow(!1)}><div onClick={k => k.stopPropagation()} style={mc}><div style={gc} /><div style={{
+      display: "flex",
+      alignItems: "baseline",
+      gap: 8,
+      marginBottom: 10
+    }}><span style={{
+        fontFamily: L.sans,
+        fontSize: 15,
+        fontWeight: 800,
+        color: d.bone
+      }}>{"Music library"}</span><span style={{
+        fontFamily: L.mono,
+        fontSize: 10,
+        color: d.muted
+      }}>{"downloads only when you tap"}</span></div><div style={{
+      maxHeight: 300,
+      overflowY: "auto"
+    }}>{libState === "loading" ? <div style={{
+        padding: "26px 0",
+        textAlign: "center",
+        fontFamily: L.sans,
+        fontSize: 12.5,
+        color: d.muted
+      }}>{"Loading tracks\u2026"}</div> : libState === "offline" || libState === "empty" ? <div style={{
+        padding: "22px 6px",
+        textAlign: "center"
+      }}><span style={{
+          display: "block",
+          fontFamily: L.sans,
+          fontSize: 13,
+          fontWeight: 700,
+          color: d.bone,
+          marginBottom: 5
+        }}>{"Library isn\u2019t available yet"}</span><span style={{
+          display: "block",
+          fontFamily: L.sans,
+          fontSize: 11.5,
+          color: d.muted,
+          lineHeight: 1.5
+        }}>{"Add your own track with My files in the meantime."}</span></div> : (lib || []).map(tk => <button key={tk.id} onClick={() => pickFromLibrary(tk)} disabled={!!libBusy} style={{
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        background: d.card,
+        border: `1px solid ${d.line}`,
+        borderRadius: 12,
+        padding: "10px 11px",
+        marginBottom: 7,
+        cursor: "pointer",
+        textAlign: "left",
+        opacity: libBusy && libBusy !== tk.id ? 0.45 : 1
+      }}><Music size={14} color={d.volt} /><span style={{
+          flex: 1,
+          minWidth: 0
+        }}><span style={{
+            display: "block",
+            fontFamily: L.sans,
+            fontSize: 12.5,
+            fontWeight: 700,
+            color: d.bone,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis"
+          }}>{tk.title}</span><span style={{
+            display: "block",
+            fontFamily: L.mono,
+            fontSize: 9.5,
+            color: d.muted,
+            marginTop: 2
+          }}>{(tk.mood ? tk.mood + " \u00B7 " : "") + Math.round((tk.durationMs || 0) / 1e3) + "s \u00B7 " + (tk.licence || "CC0")}</span></span><span style={{
+          fontFamily: L.mono,
+          fontSize: 10,
+          fontWeight: 700,
+          color: libBusy === tk.id ? d.volt : d.muted
+        }}>{libBusy === tk.id ? "\u2026" : "GET"}</span></button>)}</div><button onClick={() => sLibShow(!1)} style={{
+      width: "100%",
+      marginTop: 4,
+      padding: "11px",
+      borderRadius: 12,
+      border: `1px solid ${d.line2}`,
+      background: "none",
+      fontFamily: L.sans,
+      fontSize: 13,
+      fontWeight: 700,
+      color: d.mutedHi,
+      cursor: "pointer"
+    }}>{"Close"}</button></div></div>}{gs && <ColorSheet initial={ctar === "text" ? tcol || "#FFFFFF" : ctar === "border" ? xt : M} title={ctar === "text" ? "Text colour" : ctar === "border" ? "Border colour" : "Background colour"} soft={ctar !== "bg"} onLive={ctar === "text" ? sTcol : ctar === "border" ? C : null} onCancel={() => {
       if (ctar === "text") sTcol(pcSnap.current);else if (ctar === "border") C(pcSnap.current);
       dr(!1);
     }} onSet={k => {
@@ -3365,7 +3494,7 @@ function About({
         fontFamily: L.mono,
         fontSize: 9.5,
         color: "rgba(139,135,152,0.6)"
-      }}>{"Reelfit v1.1.1 · Voice preview + ducking · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
+      }}>{"Reelfit v1.2.0 · Music library · © PursTech 2026"}</div></div><BottomNav nav="about" go={e} /></>;
 }
 function TopBar({
   title: e,
